@@ -967,7 +967,11 @@ function calcDailyTarget(forDate){
   const dailyDeficit=totalDeficit/daysLeft;
   const bmr=cur.bmr||1500;
   const exKcal=getExerciseKcal(forDate);
-  return{target:Math.max(800,Math.round(bmr-dailyDeficit+exKcal)),exKcal,bmr:Math.round(bmr),deficit:Math.round(dailyDeficit)};
+  // 기본 목표(운동 제외)와 운동 소모분을 분리
+  // 목표 대비 = 섭취 - (기본목표 + 운동소모) 로 계산해야 운동 효과가 정확히 반영됨
+  const baseTarget=Math.max(800,Math.round(bmr-dailyDeficit));
+  const effectiveTarget=baseTarget+exKcal;
+  return{target:effectiveTarget,baseTarget,exKcal,bmr:Math.round(bmr),deficit:Math.round(dailyDeficit)};
 }
 
 function renderDietSection(){
@@ -978,16 +982,23 @@ function renderDietSection(){
   // 테이블
   document.getElementById('d-tbody').innerHTML=sorted.map(r=>{
     const res=calcDailyTarget(r.date);
-    const target=res?res.target:null;
+    const effectiveTarget=res?res.target:null;
+    const baseTarget=res?res.baseTarget:null;
     const exKcal=res?res.exKcal:0;
-    const diff=target!=null?r.kcal-target:null;
-    const exBadge=exKcal>0
-      ?`<span style="font-size:10px;color:var(--accent);margin-left:5px">+${exKcal} 운동</span>`
-      :'';
+    const diff=effectiveTarget!=null?r.kcal-effectiveTarget:null;
+    // 표시: 기본목표 (+운동소모 → 실질목표)
+    let targetDisplay='-';
+    if(baseTarget!=null){
+      if(exKcal>0){
+        targetDisplay=`${baseTarget}<span style="font-size:10px;color:var(--accent);margin-left:4px">+${exKcal}</span><span style="font-size:10px;color:var(--text-muted);margin-left:2px">→</span><b style="margin-left:4px;color:var(--info)">${effectiveTarget}</b>`;
+      } else {
+        targetDisplay=`${baseTarget}`;
+      }
+    }
     return`<tr>
       <td class="dc">${r.date}</td>
       <td class="mono">${r.kcal}</td>
-      <td class="mono">${target!=null?target:'-'}${exBadge}</td>
+      <td class="mono">${targetDisplay}</td>
       <td class="mono" style="${diff!=null?(diff<=0?'color:var(--accent)':'color:var(--danger)'):''}">${diff!=null?`${diff>=0?'+':''}${diff}`:'-'}</td>
       <td><button class="xbtn" onclick="delDiet('${r.date}')">✕</button></td>
     </tr>`;
