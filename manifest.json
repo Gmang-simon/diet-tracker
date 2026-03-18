@@ -1,0 +1,15 @@
+{
+  "name": "다이어트 트래커",
+  "short_name": "다이어트",
+  "description": "인바디·식단·운동 통합 다이어트 트래커",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0e0f11",
+  "theme_color": "#0e0f11",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["health", "fitness"]
+}
