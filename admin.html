@@ -188,6 +188,31 @@ td.mono{font-family:'DM Mono',monospace;font-size:11px;}
   <div class="content">
     <div class="page active" id="page-dashboard">
       <div class="ph"><div class="ph-title">대시보드</div><div class="ph-sub" id="db-ts">—</div></div>
+
+      <!-- DB 규칙 경고 배너 -->
+      <div id="rules-banner" style="display:none;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:var(--rl);padding:14px 18px;margin-bottom:18px;gap:14px;align-items:flex-start">
+        <div style="font-size:18px;flex-shrink:0">⚠</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--warn);margin-bottom:6px">Firebase DB 규칙 업데이트 필요</div>
+          <div style="font-size:12px;color:var(--tx2);line-height:1.7">
+            현재 DB 보안 규칙이 어드민의 전체 사용자 데이터 읽기를 차단하고 있습니다.<br>
+            <b style="color:var(--tx)">Firebase 콘솔 → Realtime Database → 규칙 탭</b>에서 아래 내용으로 교체 후 <b style="color:var(--tx)">게시</b>하세요.
+          </div>
+          <div style="margin-top:10px;background:var(--bg3);border-radius:var(--r);padding:10px 13px;font-family:'DM Mono',monospace;font-size:11px;color:#60a5fa;line-height:1.8">
+            {<br>
+            &nbsp;&nbsp;"rules": {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;"users": {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".read": "auth != null",<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"$uid": {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".write": "$uid === auth.uid"<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+            &nbsp;&nbsp;}<br>
+            }
+          </div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:8px">이 규칙은 로그인한 사용자는 누구나 읽기 가능, 쓰기는 본인 데이터만 허용합니다.</div>
+        </div>
+      </div>
       <div class="mg" id="mg-dash"></div>
       <div class="cg">
         <div class="card"><div class="ct">사용자별 체중 감량 (kg)</div><div class="chart-wrap"><canvas id="wC"></canvas></div></div>
@@ -259,7 +284,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:11px;}
 // ★ 관리자 이메일 목록 — 여기에 추가하세요
 // ★ Admin email list — add allowed emails here
 const ADMIN_EMAILS = [
-  "criowvt@gmail.com"
+  // "admin@example.com",
 ];
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -301,8 +326,16 @@ function loadAll(){
   ADM.onValue(ADM.ref(ADM.db,'users'),snap=>{
     allData=snap.exists()?snap.val():{};
     document.getElementById('db-ts').textContent='동기화: '+new Date().toLocaleTimeString('ko-KR');
+    // 데이터가 없을 때 DB 규칙 안내 배너 표시
+    const banner=document.getElementById('rules-banner');
+    if(banner) banner.style.display=Object.keys(allData).length===0?'flex':'none';
     renderDashboard();renderUsers();renderAnalytics();
     if(selUid&&allData[selUid])refreshPanel(selUid);
+  }, err=>{
+    // 권한 오류 시 안내 배너 표시
+    const banner=document.getElementById('rules-banner');
+    if(banner) banner.style.display='flex';
+    document.getElementById('db-ts').textContent='오류: Firebase DB 규칙을 확인하세요';
   });
 }
 
