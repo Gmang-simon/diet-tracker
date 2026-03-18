@@ -15,7 +15,7 @@
 <!-- ★ Firebase — 아래 config를 본인 것으로 교체하세요 ★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, get, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -40,7 +40,8 @@ const db   = getDatabase(app);
 
 // ── 전역으로 노출 ──
 window._fb = { auth, db, ref, set, get, onValue, push, remove, update,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile };
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile,
+  setPersistence, browserLocalPersistence, browserSessionPersistence };
 window._fbReady = true;
 document.dispatchEvent(new Event('fb-ready'));
 </script>
@@ -154,6 +155,11 @@ body{min-height:100dvh;display:flex;flex-direction:column;overscroll-behavior:no
 .fi:focus{border-color:var(--accent);}
 .fi[type="date"]{color-scheme:dark;}
 
+/* ── AUTH CHECKBOX ── */
+.auth-options{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px;}
+.auth-chk-label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-secondary);cursor:pointer;user-select:none;}
+.auth-chk-label input[type="checkbox"]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.auth-chk-label:hover{color:var(--text-primary);}
 /* ── BUTTON ── */
 .btn{font-family:'Pretendard',sans-serif;font-size:13px;font-weight:600;padding:10px 18px;border-radius:var(--r-sm);border:none;cursor:pointer;transition:all .15s;}
 .btn-p{background:var(--accent);color:#0e0f11;}
@@ -267,6 +273,14 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
       </div>
       <input class="auth-input" type="email" id="auth-email" placeholder="이메일" autocomplete="email">
       <input class="auth-input" type="password" id="auth-pw" placeholder="비밀번호 (6자 이상)" autocomplete="current-password">
+      <div class="auth-options" id="login-options">
+        <label class="auth-chk-label">
+          <input type="checkbox" id="chk-save-id"> 아이디 저장
+        </label>
+        <label class="auth-chk-label">
+          <input type="checkbox" id="chk-stay-login" checked> 로그인 유지
+        </label>
+      </div>
       <div class="auth-error" id="auth-error"></div>
       <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">로그인</button>
     </div>
@@ -537,9 +551,21 @@ function switchAuthTab(m){
   authMode=m;
   document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',(m==='login'&&i===0)||(m==='signup'&&i===1)));
   document.getElementById('signup-name-wrap').style.display=m==='signup'?'block':'none';
+  document.getElementById('login-options').style.display=m==='login'?'flex':'none';
   document.getElementById('auth-submit-btn').textContent=m==='login'?'로그인':'회원가입';
   document.getElementById('auth-error').textContent='';
 }
+
+// ── 아이디 저장: 페이지 로드 시 복원 ──
+(function initSavedId(){
+  const saved=localStorage.getItem('diet_saved_email');
+  if(saved){
+    document.getElementById('auth-email').value=saved;
+    document.getElementById('chk-save-id').checked=true;
+  }
+  const stayLogin=localStorage.getItem('diet_stay_login');
+  if(stayLogin==='0') document.getElementById('chk-stay-login').checked=false;
+})();
 
 async function authSubmit(){
   const email=document.getElementById('auth-email').value.trim();
@@ -549,13 +575,22 @@ async function authSubmit(){
   if(!email||!pw){errEl.textContent='이메일과 비밀번호를 입력해주세요';return;}
   const btn=document.getElementById('auth-submit-btn');btn.textContent='...';btn.disabled=true;
   try{
-    const {auth,createUserWithEmailAndPassword,signInWithEmailAndPassword,updateProfile}=FB;
-    if(authMode==='signup'){
+    const {auth,createUserWithEmailAndPassword,signInWithEmailAndPassword,updateProfile,
+           setPersistence,browserLocalPersistence,browserSessionPersistence}=FB;
+    if(authMode==='login'){
+      const saveId=document.getElementById('chk-save-id').checked;
+      const stayLogin=document.getElementById('chk-stay-login').checked;
+      // 아이디 저장
+      if(saveId) localStorage.setItem('diet_saved_email',email);
+      else localStorage.removeItem('diet_saved_email');
+      // 로그인 유지 설정
+      localStorage.setItem('diet_stay_login',stayLogin?'1':'0');
+      await setPersistence(auth,stayLogin?browserLocalPersistence:browserSessionPersistence);
+      await signInWithEmailAndPassword(auth,email,pw);
+    }else{
       const name=document.getElementById('auth-name').value.trim()||email.split('@')[0];
       const cred=await createUserWithEmailAndPassword(auth,email,pw);
       await updateProfile(cred.user,{displayName:name});
-    }else{
-      await signInWithEmailAndPassword(auth,email,pw);
     }
   }catch(e){
     const msgs={'auth/user-not-found':'등록된 이메일이 없습니다','auth/wrong-password':'비밀번호가 틀렸습니다','auth/email-already-in-use':'이미 사용 중인 이메일입니다','auth/weak-password':'비밀번호는 6자 이상이어야 합니다','auth/invalid-email':'이메일 형식이 올바르지 않습니다','auth/invalid-credential':'이메일 또는 비밀번호가 올바르지 않습니다'};

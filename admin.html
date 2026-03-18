@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, onValue, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 const firebaseConfig = {
   apiKey:"AIzaSyCv9jnoZ5AxWSn_8Oj2bFFiFkUcO8ipHBI",authDomain:"diet-62c46.firebaseapp.com",
@@ -18,7 +18,7 @@ const firebaseConfig = {
   messagingSenderId:"37243712733",appId:"1:37243712733:web:ac396d70583bfa878c5734",measurementId:"G-E3MCR4L1KB"
 };
 const app=initializeApp(firebaseConfig);const auth=getAuth(app);const db=getDatabase(app);
-window._adm={auth,db,ref,onValue,get,set,remove,signInWithEmailAndPassword,signOut,onAuthStateChanged};
+window._adm={auth,db,ref,onValue,get,set,remove,signInWithEmailAndPassword,signOut,onAuthStateChanged,setPersistence,browserLocalPersistence,browserSessionPersistence};
 window._admReady=true;document.dispatchEvent(new Event('adm-ready'));
 </script>
 <style>
@@ -37,6 +37,10 @@ body{min-height:100vh;}
 .lb{width:100%;background:var(--accent);color:#080909;font-family:'Pretendard',sans-serif;font-size:14px;font-weight:700;padding:12px;border-radius:var(--r);border:none;cursor:pointer;transition:background .15s;margin-top:4px;}
 .lb:hover{background:#22c55e;}
 .lerr{font-size:12px;color:var(--danger);min-height:18px;text-align:center;margin-top:8px;}
+.login-options{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px;}
+.lchk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;user-select:none;}
+.lchk input[type="checkbox"]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.lchk:hover{color:var(--tx);}
 #app{display:none;min-height:100vh;}
 #app.on{display:flex;}
 .sidebar{width:214px;flex-shrink:0;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
@@ -160,6 +164,10 @@ td.mono{font-family:'DM Mono',monospace;font-size:11px;}
     <div class="lsub">등록된 관리자 이메일로만 접근 가능합니다</div>
     <input class="li" type="email" id="l-em" placeholder="관리자 이메일" autocomplete="email">
     <input class="li" type="password" id="l-pw" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-options">
+      <label class="lchk"><input type="checkbox" id="chk-save-id"> 아이디 저장</label>
+      <label class="lchk"><input type="checkbox" id="chk-stay-login" checked> 로그인 유지</label>
+    </div>
     <div class="lerr" id="l-err"></div>
     <button class="lb" onclick="doLogin()">로그인</button>
   </div>
@@ -284,7 +292,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:11px;}
 // ★ 관리자 이메일 목록 — 여기에 추가하세요
 // ★ Admin email list — add allowed emails here
 const ADMIN_EMAILS = [
-  "criowvt@gmail.com"
+  // "admin@example.com",
 ];
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -312,13 +320,32 @@ waitADM(adm=>{
 });
 
 function showLogin(){document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';}
+
+// 아이디 저장 복원
+(function initAdminSavedId(){
+  const saved=localStorage.getItem('adm_saved_email');
+  if(saved){document.getElementById('l-em').value=saved;document.getElementById('chk-save-id').checked=true;}
+  const stay=localStorage.getItem('adm_stay_login');
+  if(stay==='0') document.getElementById('chk-stay-login').checked=false;
+})();
+
 async function doLogin(){
   const em=document.getElementById('l-em').value.trim(),pw=document.getElementById('l-pw').value;
   const errEl=document.getElementById('l-err');errEl.textContent='';
   if(!em||!pw){errEl.textContent='이메일과 비밀번호를 입력하세요';return;}
   if(ADMIN_EMAILS.length&&!ADMIN_EMAILS.includes(em)){errEl.textContent='관리자로 등록되지 않은 이메일입니다';return;}
-  try{await ADM.signInWithEmailAndPassword(ADM.auth,em,pw);}
-  catch(e){const m={'auth/user-not-found':'등록된 계정 없음','auth/wrong-password':'비밀번호 오류','auth/invalid-credential':'이메일 또는 비밀번호 오류','auth/too-many-requests':'잠시 후 다시 시도'};errEl.textContent=m[e.code]||e.message;}
+  try{
+    const saveId=document.getElementById('chk-save-id').checked;
+    const stayLogin=document.getElementById('chk-stay-login').checked;
+    if(saveId) localStorage.setItem('adm_saved_email',em);
+    else localStorage.removeItem('adm_saved_email');
+    localStorage.setItem('adm_stay_login',stayLogin?'1':'0');
+    await ADM.setPersistence(ADM.auth,stayLogin?ADM.browserLocalPersistence:ADM.browserSessionPersistence);
+    await ADM.signInWithEmailAndPassword(ADM.auth,em,pw);
+  }catch(e){
+    const m={'auth/user-not-found':'등록된 계정 없음','auth/wrong-password':'비밀번호 오류','auth/invalid-credential':'이메일 또는 비밀번호 오류','auth/too-many-requests':'잠시 후 다시 시도'};
+    errEl.textContent=m[e.code]||e.message;
+  }
 }
 async function doLogout(){await ADM.signOut(ADM.auth);}
 
