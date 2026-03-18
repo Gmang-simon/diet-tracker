@@ -703,7 +703,7 @@ function renderInsights(){
     const days=(new Date(cur.date)-new Date(first.date))/86400000||1;
     const wD=cur.weight-first.weight,mD=cur.muscle-first.muscle;
     if(wD<-1)ins.push({t:'good',i:'↓',m:`${Math.abs(wD).toFixed(1)}kg 감량! 일 ${Math.abs(wD/days).toFixed(2)}kg 페이스`});
-    if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 근력 운동 필요`});
+    if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 저항 운동 필요`});
     else if(mD>=0)ins.push({t:'good',i:'✓',m:'골격근량 유지/증가 중!'});
     const exK=Object.keys(exercise),done=exK.filter(d=>exDone(exercise[d])&&d<=today()).length,total=exK.filter(d=>d<=today()).length;
     const rate=total>0?done/total*100:0;
@@ -711,7 +711,21 @@ function renderInsights(){
     else ins.push({t:'good',i:'✓',m:`운동 달성률 ${rate.toFixed(0)}%`});
   }
   const rd=dietArr().slice(-7);
-  if(rd.length){const avg=rd.reduce((s,d)=>s+d.kcal,0)/rd.length;if(avg<getBMR()*.75)ins.push({t:'warn',i:'⚠',m:`7일 평균 ${avg.toFixed(0)}kcal — 기초대사량 이하`});}
+  if(rd.length){
+    const avg=rd.reduce((s,d)=>s+d.kcal,0)/rd.length;
+    // 최근 7일 각 날짜의 일별 목표(운동 소모 포함)를 평균냄
+    const targets=rd.map(d=>{const r=calcDailyTarget(d.date);return r?r.target:null;}).filter(v=>v!=null);
+    const avgTarget=targets.length?targets.reduce((s,v)=>s+v,0)/targets.length:null;
+    if(avg<800){
+      // 너무 적게 먹으면 기초대사량 자체가 떨어짐 — 다이어트 실패로 이어짐
+      ins.push({t:'warn',i:'⚠',m:`7일 평균 섭취 ${avg.toFixed(0)}kcal — 800kcal 미만은 기초대사량 저하 위험이 있어요`});
+    } else if(avgTarget!=null&&avg>avgTarget){
+      // 목표 칼로리를 초과하면 적자가 생기지 않아 감량 불가
+      ins.push({t:'bad',i:'↑',m:`7일 평균 ${avg.toFixed(0)}kcal — 일별 목표(${avgTarget.toFixed(0)}kcal) 초과. 감량 페이스가 늦어지고 있어요`});
+    } else if(avgTarget!=null){
+      ins.push({t:'good',i:'✓',m:`7일 평균 ${avg.toFixed(0)}kcal — 목표 범위 내 식사 잘 유지 중!`});
+    }
+  }
   if(!ins.length)ins.push({t:'info',i:'ℹ',m:'데이터를 기록하면 분석이 시작됩니다'});
   document.getElementById('insights').innerHTML=ins.slice(0,4).map(i=>`<div class="ins ${i.t}"><div class="ins-ico">${i.i}</div><div>${i.m}</div></div>`).join('');
 }
