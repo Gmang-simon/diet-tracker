@@ -703,7 +703,7 @@ function renderInsights(){
     const days=(new Date(cur.date)-new Date(first.date))/86400000||1;
     const wD=cur.weight-first.weight,mD=cur.muscle-first.muscle;
     if(wD<-1)ins.push({t:'good',i:'↓',m:`${Math.abs(wD).toFixed(1)}kg 감량! 일 ${Math.abs(wD/days).toFixed(2)}kg 페이스`});
-    if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 저항 운동 필요`});
+    if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 근력 운동 필요`});
     else if(mD>=0)ins.push({t:'good',i:'✓',m:'골격근량 유지/증가 중!'});
     const exK=Object.keys(exercise),done=exK.filter(d=>exDone(exercise[d])&&d<=today()).length,total=exK.filter(d=>d<=today()).length;
     const rate=total>0?done/total*100:0;
