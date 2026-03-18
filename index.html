@@ -23,13 +23,13 @@ import { getDatabase, ref, set, get, onValue, push, remove, update } from "https
 // Firebase Console → 프로젝트 설정 → 웹 앱 → firebaseConfig 복붙
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const firebaseConfig = {
-  apiKey: "AIzaSyCv9jnoZ5AxWSn_8Oj2bFFiFkUcO8ipHBI",
-  authDomain: "diet-62c46.firebaseapp.com",
-  projectId: "diet-62c46",
-  storageBucket: "diet-62c46.firebasestorage.app",
-  messagingSenderId: "37243712733",
-  appId: "1:37243712733:web:ac396d70583bfa878c5734",
-  measurementId: "G-E3MCR4L1KB"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -184,6 +184,9 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
 .cal-ico{font-size:12px;margin-top:1px;}
 .cal-cell.done{background:var(--accent-dim2);border-color:rgba(74,222,128,.25);}
 .cal-cell.done .cal-ico{color:var(--accent);}
+.cal-cell.skipped{background:var(--danger-dim);border-color:rgba(248,113,113,.2);}
+.cal-cell.skipped .cal-ico{color:var(--danger);}
+.cal-cell.selected{border-color:var(--info);border-width:2px;}
 .cal-cell.future{opacity:.3;cursor:default;}
 .cal-cell.today{border-color:var(--info);border-width:1.5px;}
 
@@ -211,6 +214,10 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
 .loading-text{font-size:13px;color:var(--text-muted);}
 #loading.hidden{display:none;}
 
+.ex-type-tag{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;font-family:'Pretendard',sans-serif;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .15s;}
+.ex-type-tag.sel{background:var(--info-dim);border-color:var(--info);color:var(--info);}
+#btn-done.sel{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+#btn-skip.sel{background:var(--danger-dim);border-color:var(--danger);color:var(--danger);}
 /* ── RESPONSIVE ── */
 @media(max-width:720px){
   .header .nav,.header .dday-badge{display:none;}
@@ -362,7 +369,39 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div class="cal-hrow"><div class="cal-dn">일</div><div class="cal-dn">월</div><div class="cal-dn">화</div><div class="cal-dn">수</div><div class="cal-dn">목</div><div class="cal-dn">금</div><div class="cal-dn">토</div></div>
         <div class="cal-grid" id="cal-grid"></div>
         <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--text-muted)">
-          <span style="color:var(--accent)">○ 완료</span><span>— 미운동</span>
+          <span style="color:var(--accent)">● 완료</span><span style="color:var(--danger)">● 미운동</span><span>빈 칸 = 미기록</span>
+        </div>
+        <!-- 운동 상세 입력 패널 -->
+        <div id="ex-detail" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="ex-detail-date"></div>
+            <button onclick="closeExDetail()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 6px">✕</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase">운동 여부</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button id="btn-done" class="ex-done-btn" onclick="setExDone(true)" style="flex:1;padding:10px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text-secondary)">운동 완료</button>
+            <button id="btn-skip" class="ex-done-btn" onclick="setExDone(false)" style="flex:1;padding:10px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text-secondary)">미운동</button>
+          </div>
+          <div id="ex-done-fields">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase">운동 종류 <span style="font-weight:400;text-transform:none">(복수 선택 가능)</span></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="type-tags">
+              <button class="ex-type-tag" onclick="toggleType('웨이트')">웨이트</button>
+              <button class="ex-type-tag" onclick="toggleType('유산소')">유산소</button>
+              <button class="ex-type-tag" onclick="toggleType('필라테스')">필라테스</button>
+              <button class="ex-type-tag" onclick="toggleType('수영')">수영</button>
+              <button class="ex-type-tag" onclick="toggleType('요가')">요가</button>
+              <button class="ex-type-tag" onclick="toggleType('구기/야외')">구기/야외</button>
+              <button class="ex-type-tag" onclick="toggleType('기타')">기타</button>
+            </div>
+            <div class="form-grid" style="grid-template-columns:1fr 2fr;gap:10px;margin-bottom:14px">
+              <div class="fg"><label class="fl">운동 시간 (분)</label><input type="number" class="fi" id="ex-duration" placeholder="60" inputmode="numeric"></div>
+              <div class="fg"><label class="fl">메모</label><input type="text" class="fi" id="ex-notes" placeholder="오늘의 운동 메모"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-p" onclick="saveExDetail()" style="flex:1">저장</button>
+            <button class="btn btn-g" onclick="delExDetail()" id="ex-del-btn" style="display:none">삭제</button>
+          </div>
         </div>
       </div>
     </section>
@@ -372,13 +411,14 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
       <div class="card">
         <div class="sl">목표 설정</div>
         <div class="form-grid">
-          <div class="fg"><label class="fl">목표 체중 (kg)</label><input type="number" step="0.1" class="fi" id="g-weight" placeholder="70" inputmode="decimal"></div>
+          <div class="fg"><label class="fl">목표 체중 (kg)</label><input type="number" step="0.1" class="fi" id="g-weight" placeholder="70" inputmode="decimal" oninput="calcFatKg()"></div>
           <div class="fg"><label class="fl">목표 골격근량 (kg)</label><input type="number" step="0.1" class="fi" id="g-muscle" placeholder="33" inputmode="decimal"></div>
-          <div class="fg"><label class="fl">목표 체지방률 (%)</label><input type="number" step="0.1" class="fi" id="g-fat-pct" placeholder="15" inputmode="decimal"></div>
-          <div class="fg"><label class="fl">목표 체지방량 (kg)</label><input type="number" step="0.1" class="fi" id="g-fat-kg" placeholder="10.5" inputmode="decimal"></div>
+          <div class="fg"><label class="fl">목표 체지방률 (%)</label><input type="number" step="0.1" class="fi" id="g-fat-pct" placeholder="15" inputmode="decimal" oninput="calcFatKg()"></div>
+          <div class="fg">
+            <label class="fl">목표 체지방량 (kg) <span style="font-size:10px;color:var(--info);margin-left:4px">자동 계산</span></label>
+            <input type="number" step="0.1" class="fi" id="g-fat-kg" placeholder="자동 계산" readonly style="opacity:.6;cursor:default">
+          </div>
           <div class="fg"><label class="fl">목표일</label><input type="date" class="fi" id="g-deadline"></div>
-          <div class="fg"><label class="fl">기초대사량 (kcal)</label><input type="number" class="fi" id="g-bmr" placeholder="1562" inputmode="numeric"></div>
-          <div class="fg"><label class="fl">활동대사량 (kcal)</label><input type="number" class="fi" id="g-tdee" placeholder="2429" inputmode="numeric"></div>
         </div>
         <button class="btn btn-p" onclick="saveGoals()">저장</button>
       </div>
@@ -412,7 +452,7 @@ function waitFB(fn){if(window._fbReady)fn(window._fb);else document.addEventList
 // STATE
 // ═══════════════════════════════════════════
 let uid=null,userName='',unsubscribers=[];
-let goals={weight:70,muscle:33,fatPct:15,fatKg:10.5,deadline:'2026-06-30',bmr:1562,tdee:2429};
+let goals={weight:70,muscle:33,fatPct:15,fatKg:10.5,deadline:'2026-06-30'};
 let inbody={},diet={},exercise={};
 
 const fmt=(v,d=1)=>v==null?'-':(+v).toFixed(d);
@@ -422,6 +462,9 @@ const latestIb=()=>{const ks=Object.keys(inbody).sort((a,b)=>b.localeCompare(a))
 const firstIb=()=>{const ks=Object.keys(inbody).sort();return ks.length?inbody[ks[0]]:null;};
 const ibArr=()=>Object.entries(inbody).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>({...v,date:k}));
 const dietArr=()=>Object.entries(diet).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>({...v,date:k}));
+const getBMR=()=>latestIb()?.bmr||1500;
+const exDone=v=>v==='O'||(v&&typeof v==='object'&&v.done===true);
+const exObj=v=>(typeof v==='object'&&v!==null)?v:(v==='O'?{done:true}:{done:false});
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function setSyncDot(s){const d=document.getElementById('sync-dot');d.className='sync-dot'+(s==='ok'?'':' '+s);}
@@ -567,13 +610,13 @@ function renderInsights(){
     if(wD<-1)ins.push({t:'good',i:'↓',m:`${Math.abs(wD).toFixed(1)}kg 감량! 일 ${Math.abs(wD/days).toFixed(2)}kg 페이스`});
     if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 저항 운동 필요`});
     else if(mD>=0)ins.push({t:'good',i:'✓',m:'골격근량 유지/증가 중!'});
-    const exK=Object.keys(exercise),done=exK.filter(d=>exercise[d]==='O'&&d<=today()).length,total=exK.filter(d=>d<=today()).length;
+    const exK=Object.keys(exercise),done=exK.filter(d=>exDone(exercise[d])&&d<=today()).length,total=exK.filter(d=>d<=today()).length;
     const rate=total>0?done/total*100:0;
     if(rate<30)ins.push({t:'bad',i:'✗',m:`운동 달성률 ${rate.toFixed(0)}% — 주 3회 이상 목표`});
     else ins.push({t:'good',i:'✓',m:`운동 달성률 ${rate.toFixed(0)}%`});
   }
   const rd=dietArr().slice(-7);
-  if(rd.length){const avg=rd.reduce((s,d)=>s+d.kcal,0)/rd.length;if(avg<goals.bmr*.75)ins.push({t:'warn',i:'⚠',m:`7일 평균 ${avg.toFixed(0)}kcal — 기초대사량 이하`});}
+  if(rd.length){const avg=rd.reduce((s,d)=>s+d.kcal,0)/rd.length;if(avg<getBMR()*.75)ins.push({t:'warn',i:'⚠',m:`7일 평균 ${avg.toFixed(0)}kcal — 기초대사량 이하`});}
   if(!ins.length)ins.push({t:'info',i:'ℹ',m:'데이터를 기록하면 분석이 시작됩니다'});
   document.getElementById('insights').innerHTML=ins.slice(0,4).map(i=>`<div class="ins ${i.t}"><div class="ins-ico">${i.i}</div><div>${i.m}</div></div>`).join('');
 }
@@ -586,7 +629,7 @@ function renderDC(type){
   const asc=ibArr(),dAsc=dietArr();
   const col={weight:'#60a5fa',muscle:'#4ade80',fat_pct:'#fb923c',kcal:'#f87171'};
   const lbl={weight:'체중(kg)',muscle:'골격근(kg)',fat_pct:'체지방률(%)',kcal:'칼로리'};
-  const gl={weight:goals.weight,muscle:goals.muscle,fat_pct:goals.fatPct,kcal:goals.bmr};
+  const gl={weight:goals.weight,muscle:goals.muscle,fat_pct:goals.fatPct,kcal:getBMR()};
   let labels,data,gLine;
   if(type==='kcal'){labels=dAsc.map(d=>fmtD(d.date));data=dAsc.map(d=>d.kcal);gLine=data.map(()=>gl[type]);}
   else{labels=asc.map(d=>fmtD(d.date));data=asc.map(d=>type==='fat_pct'?+(d.fat/d.weight*100).toFixed(2):d[type==='weight'?'weight':type==='muscle'?'muscle':'fat']);gLine=data.map(()=>gl[type]);}
@@ -630,9 +673,9 @@ function renderDietSection(){
   document.getElementById('d-date').value=today();
   const sorted=dietArr().reverse();
   const asc=dietArr();
-  document.getElementById('d-tbody').innerHTML=sorted.map(r=>{const diff=r.kcal-goals.bmr;return`<tr><td class="dc">${r.date}</td><td>${r.carb?fmt(r.carb):'-'}</td><td>${r.protein?fmt(r.protein):'-'}</td><td>${r.fat?fmt(r.fat):'-'}</td><td>${r.kcal}</td><td style="${diff<=0?'color:var(--accent)':'color:var(--danger)'}">${diff>=0?'+':''}${diff.toFixed(0)}</td><td><button class="xbtn" onclick="delDiet('${r.date}')">✕</button></td></tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">기록 없음</td></tr>';
+  document.getElementById('d-tbody').innerHTML=sorted.map(r=>{const diff=r.kcal-getBMR();return`<tr><td class="dc">${r.date}</td><td>${r.carb?fmt(r.carb):'-'}</td><td>${r.protein?fmt(r.protein):'-'}</td><td>${r.fat?fmt(r.fat):'-'}</td><td>${r.kcal}</td><td style="${diff<=0?'color:var(--accent)':'color:var(--danger)'}">${diff>=0?'+':''}${diff.toFixed(0)}</td><td><button class="xbtn" onclick="delDiet('${r.date}')">✕</button></td></tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">기록 없음</td></tr>';
   if(dTC)dTC.destroy();
-  dTC=new Chart(document.getElementById('dTrendChart'),{type:'bar',data:{labels:asc.map(d=>fmtD(d.date)),datasets:[{label:'섭취',data:asc.map(d=>d.kcal),backgroundColor:'#60a5fa55',borderColor:'#60a5fa',borderWidth:1,borderRadius:3},{label:'BMR',data:asc.map(()=>goals.bmr),type:'line',borderColor:'#4ade80',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false}]},options:{...CHART_OPTS,plugins:{...CHART_OPTS.plugins,legend:{labels:{color:'#8a8884',font:{size:11},boxWidth:8}}}}});
+  dTC=new Chart(document.getElementById('dTrendChart'),{type:'bar',data:{labels:asc.map(d=>fmtD(d.date)),datasets:[{label:'섭취',data:asc.map(d=>d.kcal),backgroundColor:'#60a5fa55',borderColor:'#60a5fa',borderWidth:1,borderRadius:3},{label:'BMR',data:asc.map(()=>getBMR()),type:'line',borderColor:'#4ade80',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false}]},options:{...CHART_OPTS,plugins:{...CHART_OPTS.plugins,legend:{labels:{color:'#8a8884',font:{size:11},boxWidth:8}}}}});
   const wm=asc.filter(d=>d.carb&&d.protein&&d.fat);
   if(mC)mC.destroy();
   if(wm.length){const aC=wm.reduce((s,d)=>s+d.carb,0)/wm.length,aP=wm.reduce((s,d)=>s+d.protein,0)/wm.length,aF=wm.reduce((s,d)=>s+d.fat,0)/wm.length,tot=aC+aP+aF;mC=new Chart(document.getElementById('macroChart'),{type:'doughnut',data:{labels:[`탄 ${(aC/tot*100).toFixed(0)}%`,`단 ${(aP/tot*100).toFixed(0)}%`,`지 ${(aF/tot*100).toFixed(0)}%`],datasets:[{data:[aC,aP,aF],backgroundColor:['#fbbf24','#4ade80','#f87171'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8a8884',font:{size:11},boxWidth:8},position:'bottom'}},cutout:'55%'}});}
@@ -648,36 +691,114 @@ async function delDiet(date){if(!confirm(`${date} 삭제?`))return;await dbRemov
 // ═══════════════════════════════════════════
 // EXERCISE
 // ═══════════════════════════════════════════
-let calY,calM;
+let calY,calM,selectedDate=null,selDone=null,selTypes=[];
+
 function renderExercise(){
   const t=new Date(today());if(!calY){calY=t.getFullYear();calM=t.getMonth();}
   renderCal();renderExStats();
 }
-function changeMonth(dir){calM+=dir;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}renderCal();}
+function changeMonth(dir){
+  calM+=dir;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}
+  renderCal();closeExDetail();
+}
+
 function renderCal(){
   const td=today();
   document.getElementById('cal-ml').textContent=`${calY}년 ${calM+1}월`;
   const first=new Date(calY,calM,1).getDay(),days=new Date(calY,calM+1,0).getDate();
-  let h='';for(let i=0;i<first;i++)h+='<div></div>';
+  let h='';
+  for(let i=0;i<first;i++)h+='<div></div>';
   for(let d=1;d<=days;d++){
     const ds=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const s=exercise[ds],isFuture=ds>td,isToday=ds===td,isDone=s==='O';
-    h+=`<div class="cal-cell ${isDone?'done':'skip'} ${isFuture?'future':''} ${isToday?'today':''}" onclick="toggleEx('${ds}')"><div class="cal-dn2">${d}</div><div class="cal-ico">${isFuture?'':(isDone?'○':'—')}</div></div>`;
+    const v=exercise[ds],isFuture=ds>td,isToday=ds===td;
+    const isDone=exDone(v),hasRecord=v!==undefined&&v!==null;
+    const obj=hasRecord?exObj(v):null;
+    const typeHint=obj?.types?.length?`<div style="font-size:8px;color:var(--accent);line-height:1;margin-top:1px;overflow:hidden;max-width:100%;text-align:center">${obj.types[0]}</div>`:'';
+    const durHint=obj?.duration?`<div style="font-size:8px;color:var(--text-muted);line-height:1">${obj.duration}m</div>`:'';
+    const selClass=ds===selectedDate?'selected':'';
+    h+=`<div class="cal-cell ${isDone?'done':hasRecord?'skipped':''} ${isFuture?'future':''} ${isToday?'today':''} ${selClass}" onclick="openExDetail('${ds}')">
+      <div class="cal-dn2">${d}</div>
+      <div class="cal-ico">${isFuture?'':(isDone?'●':(hasRecord?'●':''))}</div>
+      ${isDone?typeHint:''}
+      ${isDone?durHint:''}
+    </div>`;
   }
   document.getElementById('cal-grid').innerHTML=h;
 }
-async function toggleEx(ds){
+
+function openExDetail(ds){
   if(ds>today())return;
-  const cur=exercise[ds];
-  const next=cur==='O'?'X':'O';
-  await dbSet(`exercise/${ds}`,next);
+  selectedDate=ds;
+  const v=exercise[ds];
+  const obj=v!==undefined?exObj(v):null;
+  selDone=obj?obj.done:null;
+  selTypes=obj?.types?[...obj.types]:[];
+  document.getElementById('ex-detail-date').textContent=ds+' 운동 기록';
+  document.getElementById('ex-duration').value=obj?.duration||'';
+  document.getElementById('ex-notes').value=obj?.notes||'';
+  document.getElementById('ex-del-btn').style.display=obj?'inline-flex':'none';
+  updateDoneBtn();
+  updateTypeTags();
+  const doneFields=document.getElementById('ex-done-fields');
+  doneFields.style.display=selDone===false?'none':'block';
+  document.getElementById('ex-detail').style.display='block';
+  document.getElementById('ex-detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+  renderCal();
 }
+
+function closeExDetail(){
+  selectedDate=null;selDone=null;selTypes=[];
+  document.getElementById('ex-detail').style.display='none';
+  renderCal();
+}
+
+function setExDone(val){
+  selDone=val;
+  updateDoneBtn();
+  document.getElementById('ex-done-fields').style.display=val?'block':'none';
+}
+
+function updateDoneBtn(){
+  const bd=document.getElementById('btn-done'),bs=document.getElementById('btn-skip');
+  bd.className='ex-done-btn'+(selDone===true?' sel':'');
+  bs.className='ex-done-btn'+(selDone===false?' sel':'');
+  bd.style.cssText='flex:1;padding:10px;border-radius:var(--r-sm);border:1px solid;background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;'+(selDone===true?'border-color:var(--accent);color:var(--accent);background:var(--accent-dim)':'border-color:var(--border);color:var(--text-secondary)');
+  bs.style.cssText='flex:1;padding:10px;border-radius:var(--r-sm);border:1px solid;background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;'+(selDone===false?'border-color:var(--danger);color:var(--danger);background:var(--danger-dim)':'border-color:var(--border);color:var(--text-secondary)');
+}
+
+function toggleType(t){
+  const idx=selTypes.indexOf(t);
+  if(idx>=0)selTypes.splice(idx,1);else selTypes.push(t);
+  updateTypeTags();
+}
+
+function updateTypeTags(){
+  document.querySelectorAll('.ex-type-tag').forEach(btn=>{
+    const isSel=selTypes.includes(btn.textContent);
+    btn.style.cssText=isSel?'padding:5px 12px;border-radius:20px;border:1px solid var(--info);background:var(--info-dim);font-family:inherit;font-size:12px;font-weight:500;color:var(--info);cursor:pointer;transition:all .15s':'padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;font-family:inherit;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .15s';
+  });
+}
+
+async function saveExDetail(){
+  if(!selectedDate){toast('날짜를 선택해주세요');return;}
+  if(selDone===null){toast('운동 여부를 선택해주세요');return;}
+  const obj={done:selDone,types:selDone?selTypes:[],duration:+document.getElementById('ex-duration').value||null,notes:document.getElementById('ex-notes').value||null};
+  await dbSet(`exercise/${selectedDate}`,obj);
+  toast('운동 기록 저장!');closeExDetail();
+}
+
+async function delExDetail(){
+  if(!selectedDate||!confirm(`${selectedDate} 기록을 삭제할까요?`))return;
+  await dbRemove(`exercise/${selectedDate}`);
+  toast('삭제 완료');closeExDetail();
+}
+
 function renderExStats(){
-  const td=today(),all=Object.keys(exercise).filter(d=>d<=td),done=all.filter(d=>exercise[d]==='O');
+  const td=today(),all=Object.keys(exercise).filter(d=>d<=td),done=all.filter(d=>exDone(exercise[d]));
   const rate=all.length?+(done.length/all.length*100).toFixed(0):0;
   document.getElementById('ex-total').innerHTML=`${done.length}<span>일</span>`;
   document.getElementById('ex-rate').innerHTML=`${rate}<span>%</span>`;
-  let streak=0;for(const d of [...all].sort((a,b)=>b.localeCompare(a))){if(exercise[d]==='O')streak++;else break;}
+  let streak=0;for(const d of [...all].sort((a,b)=>b.localeCompare(a))){if(exDone(exercise[d]))streak++;else break;}
   document.getElementById('ex-streak').innerHTML=`${streak}<span>일</span>`;
 }
 
@@ -690,12 +811,18 @@ function renderSettings(){
   document.getElementById('g-fat-pct').value=goals.fatPct||'';
   document.getElementById('g-fat-kg').value=goals.fatKg||'';
   document.getElementById('g-deadline').value=goals.deadline||'';
-  document.getElementById('g-bmr').value=goals.bmr||'';
-  document.getElementById('g-tdee').value=goals.tdee||'';
   document.getElementById('account-email').textContent=FB?.auth?.currentUser?.email||'';
 }
+function calcFatKg(){
+  const w=+document.getElementById('g-weight').value;
+  const p=+document.getElementById('g-fat-pct').value;
+  if(w>0&&p>0)document.getElementById('g-fat-kg').value=(w*p/100).toFixed(1);
+  else document.getElementById('g-fat-kg').value='';
+}
 async function saveGoals(){
-  const g={weight:+document.getElementById('g-weight').value,muscle:+document.getElementById('g-muscle').value,fatPct:+document.getElementById('g-fat-pct').value,fatKg:+document.getElementById('g-fat-kg').value,deadline:document.getElementById('g-deadline').value,bmr:+document.getElementById('g-bmr').value,tdee:+document.getElementById('g-tdee').value};
+  const w=+document.getElementById('g-weight').value;
+  const p=+document.getElementById('g-fat-pct').value;
+  const g={weight:w,muscle:+document.getElementById('g-muscle').value,fatPct:p,fatKg:w&&p?+(w*p/100).toFixed(1):0,deadline:document.getElementById('g-deadline').value};
   await dbSet('goals',g);toast('목표 저장 완료!');
 }
 
