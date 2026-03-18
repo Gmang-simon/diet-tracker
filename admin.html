@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin — 다이어트 트래커</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, onValue, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const firebaseConfig = {
+  apiKey:"AIzaSyCv9jnoZ5AxWSn_8Oj2bFFiFkUcO8ipHBI",authDomain:"diet-62c46.firebaseapp.com",
+  databaseURL:"https://diet-62c46-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"diet-62c46",storageBucket:"diet-62c46.firebasestorage.app",
+  messagingSenderId:"37243712733",appId:"1:37243712733:web:ac396d70583bfa878c5734",measurementId:"G-E3MCR4L1KB"
+};
+const app=initializeApp(firebaseConfig);const auth=getAuth(app);const db=getDatabase(app);
+window._adm={auth,db,ref,onValue,get,set,remove,signInWithEmailAndPassword,signOut,onAuthStateChanged};
+window._admReady=true;document.dispatchEvent(new Event('adm-ready'));
+</script>
+<style>
+:root{--bg0:#080909;--bg1:#0f1012;--bg2:#161719;--bg3:#1e2022;--bg4:#252729;--border:rgba(255,255,255,.06);--border-b:rgba(255,255,255,.13);--tx:#e8e6e3;--tx2:#7a7875;--tx3:#454341;--accent:#4ade80;--adim:rgba(74,222,128,.1);--info:#60a5fa;--idim:rgba(96,165,250,.1);--warn:#fbbf24;--wdim:rgba(251,191,36,.1);--danger:#f87171;--ddim:rgba(248,113,113,.1);--purple:#a78bfa;--pdim:rgba(167,139,250,.1);--r:8px;--rl:12px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{background:var(--bg0);color:var(--tx);font-family:'Pretendard',sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+body{min-height:100vh;}
+#login{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+.lbox{width:340px;}
+.lword{font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--tx3);margin-bottom:28px;display:flex;align-items:center;gap:8px;}
+.lword::before{content:'';width:6px;height:6px;background:var(--accent);border-radius:50%;}
+.ltitle{font-size:22px;font-weight:700;margin-bottom:4px;}
+.lsub{font-size:13px;color:var(--tx2);margin-bottom:24px;}
+.li{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;color:var(--tx);font-family:'Pretendard',sans-serif;font-size:14px;outline:none;transition:border-color .15s;margin-bottom:10px;}
+.li:focus{border-color:var(--accent);}
+.lb{width:100%;background:var(--accent);color:#080909;font-family:'Pretendard',sans-serif;font-size:14px;font-weight:700;padding:12px;border-radius:var(--r);border:none;cursor:pointer;transition:background .15s;margin-top:4px;}
+.lb:hover{background:#22c55e;}
+.lerr{font-size:12px;color:var(--danger);min-height:18px;text-align:center;margin-top:8px;}
+#app{display:none;min-height:100vh;}
+#app.on{display:flex;}
+.sidebar{width:214px;flex-shrink:0;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
+.sb-top{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
+.sb-wm{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--tx3);margin-bottom:5px;}
+.sb-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.sb-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--ddim);color:var(--danger);}
+.sb-nav{flex:1;padding:10px 8px;overflow-y:auto;}
+.sb-sec{font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);padding:8px 10px 4px;margin-top:4px;}
+.sbi{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);font-size:13px;font-weight:500;color:var(--tx2);cursor:pointer;transition:all .12s;margin-bottom:1px;user-select:none;}
+.sbi:hover{background:var(--bg3);color:var(--tx);}
+.sbi.active{background:var(--adim);color:var(--accent);}
+.sbi-ic{width:15px;text-align:center;font-size:13px;flex-shrink:0;}
+.sb-bot{padding:12px 14px;border-top:1px solid var(--border);}
+.sb-email{font-size:11px;color:var(--tx3);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-lo{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:6px;color:var(--tx2);font-family:'Pretendard',sans-serif;font-size:12px;cursor:pointer;transition:all .15s;}
+.sb-lo:hover{border-color:var(--border-b);color:var(--tx);}
+.content{flex:1;overflow-y:auto;min-width:0;}
+.page{display:none;padding:26px 28px;}
+.page.active{display:block;}
+.ph{margin-bottom:20px;}
+.ph-title{font-size:20px;font-weight:700;margin-bottom:3px;}
+.ph-sub{font-size:12px;color:var(--tx2);}
+.mg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:20px;}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;transition:border-color .2s;}
+.mc:hover{border-color:var(--border-b);}
+.mc-l{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:7px;}
+.mc-v{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
+.mc-v span{font-size:12px;font-weight:400;color:var(--tx2);margin-left:2px;}
+.mc-s{font-size:11px;color:var(--tx2);margin-top:5px;}
+.mc-s.up{color:var(--accent);}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:14px;}
+.ct{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.ct::after{content:'';flex:1;height:1px;background:var(--border);}
+.cg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;}
+.chart-wrap{position:relative;height:196px;}
+.tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--bg3);}
+th{padding:8px 12px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:background .1s;cursor:pointer;}
+tbody tr:hover{background:var(--bg3);}
+td.mono{font-family:'DM Mono',monospace;font-size:11px;}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;}
+.badge.green{background:var(--adim);color:var(--accent);}
+.badge.red{background:var(--ddim);color:var(--danger);}
+.badge.gray{background:var(--bg4);color:var(--tx2);}
+.badge.warn{background:var(--wdim);color:var(--warn);}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;}
+#overlay.on{display:block;}
+#panel{position:fixed;top:0;right:0;bottom:0;width:540px;background:var(--bg1);border-left:1px solid var(--border);overflow-y:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:200;}
+#panel.open{transform:translateX(0);}
+.pn-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--bg1);z-index:1;}
+.pn-av{width:38px;height:38px;border-radius:50%;background:var(--pdim);border:1px solid rgba(167,139,250,.25);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--purple);flex-shrink:0;}
+.pn-name{font-size:14px;font-weight:700;}
+.pn-uid{font-size:10px;color:var(--tx2);font-family:'DM Mono',monospace;}
+.pn-close{margin-left:auto;background:none;border:none;color:var(--tx2);cursor:pointer;font-size:17px;padding:4px;transition:color .15s;}
+.pn-close:hover{color:var(--tx);}
+.pn-body{padding:16px 20px;}
+.pn-stats{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.pchip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:11px;color:var(--tx2);display:flex;align-items:center;gap:5px;}
+.pchip b{font-weight:600;}
+.ptabs{display:flex;gap:2px;background:var(--bg3);border-radius:var(--r);padding:3px;margin-bottom:14px;}
+.ptab{flex:1;text-align:center;padding:7px;border-radius:6px;font-size:12px;font-weight:500;color:var(--tx2);cursor:pointer;border:none;background:none;font-family:'Pretendard',sans-serif;transition:all .12s;}
+.ptab.active{background:var(--bg2);color:var(--tx);}
+.pcon{display:none;}
+.pcon.active{display:block;}
+.mtw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);margin-bottom:10px;}
+.mtw table{font-size:11px;}
+.mtw th{font-size:9px;padding:6px 10px;}
+.mtw td{padding:6px 10px;}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.fl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);}
+.fi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;color:var(--tx);font-family:'Pretendard',sans-serif;font-size:13px;outline:none;transition:border-color .15s;width:100%;}
+.fi:focus{border-color:var(--accent);}
+.fi[readonly]{opacity:.5;cursor:default;}
+.fi[type="date"]{color-scheme:dark;}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:12px;}
+.btn{font-family:'Pretendard',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;transition:all .15s;}
+.btn-p{background:var(--accent);color:#080909;}
+.btn-p:hover{background:#22c55e;}
+.btn-g{background:transparent;color:var(--tx2);border:1px solid var(--border);}
+.btn-g:hover{border-color:var(--border-b);color:var(--tx);}
+.btn-d{background:var(--ddim);color:var(--danger);border:1px solid rgba(248,113,113,.25);}
+.btn-d:hover{background:rgba(248,113,113,.2);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.edit-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-top:10px;}
+.edit-title{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:12px;}
+.dz{background:var(--ddim);border:1px solid rgba(248,113,113,.2);border-radius:var(--r);padding:14px;margin-top:14px;}
+.dz-t{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);margin-bottom:6px;}
+.dz-s{font-size:11px;color:var(--tx2);margin-bottom:10px;}
+.pbar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.pbar-l{font-size:11px;color:var(--tx2);width:56px;flex-shrink:0;}
+.pbar-t{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.pbar-f{height:100%;border-radius:2px;transition:width .5s;}
+.pbar-p{font-size:10px;font-family:'DM Mono',monospace;color:var(--tx2);width:30px;text-align:right;}
+.sbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;}
+.si{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;color:var(--tx);font-family:'Pretendard',sans-serif;font-size:13px;outline:none;transition:border-color .15s;}
+.si:focus{border-color:var(--info);}
+#loading{position:fixed;inset:0;background:var(--bg0);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px;}
+.spin{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading.hidden{display:none;}
+#toast{position:fixed;bottom:22px;right:22px;background:var(--bg4);border:1px solid var(--border-b);border-radius:var(--r);padding:10px 15px;font-size:13px;color:var(--tx);transform:translateY(60px);opacity:0;transition:all .25s cubic-bezier(.4,0,.2,1);z-index:9999;max-width:280px;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.ok{color:var(--accent);border-color:rgba(74,222,128,.4);}
+#toast.err{color:var(--danger);border-color:rgba(248,113,113,.4);}
+.empty{text-align:center;padding:32px;color:var(--tx3);font-size:12px;}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spin"></div></div>
+
+<div id="login" style="display:none">
+  <div class="lbox">
+    <div class="lword">Diet Tracker Admin</div>
+    <div class="ltitle">관리자 로그인</div>
+    <div class="lsub">등록된 관리자 이메일로만 접근 가능합니다</div>
+    <input class="li" type="email" id="l-em" placeholder="관리자 이메일" autocomplete="email">
+    <input class="li" type="password" id="l-pw" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="lerr" id="l-err"></div>
+    <button class="lb" onclick="doLogin()">로그인</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="sidebar">
+    <div class="sb-top">
+      <div class="sb-wm">Diet Tracker</div>
+      <div class="sb-title">Admin <span class="sb-badge">ADMIN</span></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-sec">Overview</div>
+      <div class="sbi active" onclick="showPage('dashboard')"><span class="sbi-ic">◎</span>대시보드</div>
+      <div class="sb-sec">Management</div>
+      <div class="sbi" onclick="showPage('users')"><span class="sbi-ic">◈</span>사용자 관리</div>
+      <div class="sb-sec">Analytics</div>
+      <div class="sbi" onclick="showPage('analytics')"><span class="sbi-ic">◉</span>데이터 분석</div>
+    </nav>
+    <div class="sb-bot">
+      <div class="sb-email" id="sb-em">—</div>
+      <button class="sb-lo" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page active" id="page-dashboard">
+      <div class="ph"><div class="ph-title">대시보드</div><div class="ph-sub" id="db-ts">—</div></div>
+      <div class="mg" id="mg-dash"></div>
+      <div class="cg">
+        <div class="card"><div class="ct">사용자별 체중 감량 (kg)</div><div class="chart-wrap"><canvas id="wC"></canvas></div></div>
+        <div class="card"><div class="ct">운동 달성률</div><div class="chart-wrap"><canvas id="eC"></canvas></div></div>
+      </div>
+      <div class="card"><div class="ct">최근 7일 활동 요약</div><div id="db-recent"></div></div>
+    </div>
+
+    <div class="page" id="page-users">
+      <div class="ph"><div class="ph-title">사용자 관리</div><div class="ph-sub">행을 클릭하면 상세 조회 및 데이터 수정이 가능합니다</div></div>
+      <div class="sbar">
+        <input class="si" type="text" id="u-search" placeholder="이름 또는 UID 검색..." oninput="filterUsers()">
+        <span style="font-size:12px;color:var(--tx2)" id="u-cnt"></span>
+      </div>
+      <div class="tw"><table>
+        <thead><tr><th>사용자</th><th>최근 체중</th><th>체중 변화</th><th>인바디</th><th>식단</th><th>운동 달성률</th><th>마지막 기록</th><th>D-day</th><th>상태</th></tr></thead>
+        <tbody id="u-tbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="page" id="page-analytics">
+      <div class="ph"><div class="ph-title">데이터 분석</div><div class="ph-sub">전체 사용자 집계 통계</div></div>
+      <div class="mg" id="mg-ana"></div>
+      <div class="cg">
+        <div class="card"><div class="ct">체중 시작 vs 현재 (kg)</div><div class="chart-wrap"><canvas id="awC"></canvas></div></div>
+        <div class="card"><div class="ct">최근 14일 평균 칼로리</div><div class="chart-wrap"><canvas id="acC"></canvas></div></div>
+      </div>
+      <div class="card"><div class="ct">사용자별 목표 달성률</div><div id="gp"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" onclick="closePanel()"></div>
+<div id="panel">
+  <div class="pn-head">
+    <div class="pn-av" id="pn-av"></div>
+    <div><div class="pn-name" id="pn-name"></div><div class="pn-uid" id="pn-uid"></div></div>
+    <button class="pn-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="pn-body">
+    <div class="pn-stats" id="pn-stats"></div>
+    <div class="ptabs">
+      <button class="ptab active" onclick="switchTab('inbody',this)">인바디</button>
+      <button class="ptab" onclick="switchTab('diet',this)">식단</button>
+      <button class="ptab" onclick="switchTab('exercise',this)">운동</button>
+      <button class="ptab" onclick="switchTab('goals',this)">목표 설정</button>
+    </div>
+    <div class="pcon active" id="pt-inbody"></div>
+    <div class="pcon" id="pt-diet"></div>
+    <div class="pcon" id="pt-exercise"></div>
+    <div class="pcon" id="pt-goals"></div>
+    <div class="dz">
+      <div class="dz-t">위험 구역</div>
+      <div class="dz-s">삭제 후 복구 불가 — 신중히 진행하세요</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-d btn-sm" onclick="delData('inbody')">인바디 전체 삭제</button>
+        <button class="btn btn-d btn-sm" onclick="delData('diet')">식단 전체 삭제</button>
+        <button class="btn btn-d btn-sm" onclick="delData('exercise')">운동 전체 삭제</button>
+        <button class="btn btn-d btn-sm" style="background:rgba(248,113,113,.3)" onclick="delData('all')">사용자 전체 삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ★ 관리자 이메일 목록 — 여기에 추가하세요
+// ★ Admin email list — add allowed emails here
+const ADMIN_EMAILS = [
+  "criowvt@gmail.com"
+];
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+let ADM, selUid=null, allData={}, filteredUids=[];
+let wC=null,eC=null,awC=null,acC=null;
+const CB={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a7875',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#7a7875',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}}};
+
+function waitADM(fn){if(window._admReady)fn(window._adm);else document.addEventListener('adm-ready',()=>fn(window._adm),{once:true});}
+
+waitADM(adm=>{
+  ADM=adm;
+  adm.onAuthStateChanged(adm.auth,async user=>{
+    document.getElementById('loading').classList.add('hidden');
+    if(user){
+      if(!ADMIN_EMAILS.includes(user.email)){
+        await adm.signOut(adm.auth);showLogin();
+        showToast('관리자 권한이 없는 이메일입니다','err');return;
+      }
+      document.getElementById('sb-em').textContent=user.email;
+      document.getElementById('login').style.display='none';
+      document.getElementById('app').classList.add('on');
+      loadAll();
+    }else{showLogin();}
+  });
+});
+
+function showLogin(){document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';}
+async function doLogin(){
+  const em=document.getElementById('l-em').value.trim(),pw=document.getElementById('l-pw').value;
+  const errEl=document.getElementById('l-err');errEl.textContent='';
+  if(!em||!pw){errEl.textContent='이메일과 비밀번호를 입력하세요';return;}
+  if(ADMIN_EMAILS.length&&!ADMIN_EMAILS.includes(em)){errEl.textContent='관리자로 등록되지 않은 이메일입니다';return;}
+  try{await ADM.signInWithEmailAndPassword(ADM.auth,em,pw);}
+  catch(e){const m={'auth/user-not-found':'등록된 계정 없음','auth/wrong-password':'비밀번호 오류','auth/invalid-credential':'이메일 또는 비밀번호 오류','auth/too-many-requests':'잠시 후 다시 시도'};errEl.textContent=m[e.code]||e.message;}
+}
+async function doLogout(){await ADM.signOut(ADM.auth);}
+
+function loadAll(){
+  ADM.onValue(ADM.ref(ADM.db,'users'),snap=>{
+    allData=snap.exists()?snap.val():{};
+    document.getElementById('db-ts').textContent='동기화: '+new Date().toLocaleTimeString('ko-KR');
+    renderDashboard();renderUsers();renderAnalytics();
+    if(selUid&&allData[selUid])refreshPanel(selUid);
+  });
+}
+
+const fmt=(v,d=1)=>v==null?'-':(+v).toFixed(d);
+const td=()=>new Date().toISOString().slice(0,10);
+const fmtD=d=>d?d.slice(5).replace('-','/'):'';
+const ago7=()=>new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+const exDone=v=>v==='O'||(v&&typeof v==='object'&&v.done===true);
+const exObj=v=>(typeof v==='object'&&v)?v:(v==='O'?{done:true}:{done:false});
+const getName=(uid,d)=>d?.goals?.name||uid.slice(0,8)+'…';
+const getLatestIb=d=>{if(!d?.inbody)return null;const ks=Object.keys(d.inbody).sort((a,b)=>b.localeCompare(a));return ks.length?{...d.inbody[ks[0]],date:ks[0]}:null;};
+const getFirstIb=d=>{if(!d?.inbody)return null;const ks=Object.keys(d.inbody).sort();return ks.length?{...d.inbody[ks[0]],date:ks[0]}:null;};
+const getLastDate=d=>{const ds=[];if(d?.inbody)ds.push(...Object.keys(d.inbody));if(d?.diet)ds.push(...Object.keys(d.diet));if(d?.exercise)ds.push(...Object.keys(d.exercise));return ds.sort().pop()||null;};
+const getExRate=d=>{if(!d?.exercise)return 0;const all=Object.keys(d.exercise).filter(k=>k<=td());return all.length?all.filter(k=>exDone(d.exercise[k])).length/all.length*100:0;};
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sbi').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.sbi')[{dashboard:0,users:1,analytics:2}[id]].classList.add('active');
+}
+
+function renderDashboard(){
+  const uids=Object.keys(allData);const a7=ago7();
+  let active=0,ibT=0,dietT=0,exT=0;
+  uids.forEach(uid=>{const d=allData[uid];const last=getLastDate(d);if(last&&last>=a7)active++;ibT+=Object.keys(d?.inbody||{}).length;dietT+=Object.keys(d?.diet||{}).length;exT+=Object.keys(d?.exercise||{}).filter(k=>exDone(d.exercise[k])).length;});
+  document.getElementById('mg-dash').innerHTML=[{l:'총 사용자',v:uids.length,u:'명',s:'전체 등록'},{l:'7일 활성',v:active,u:'명',s:'최근 7일 기록 있음',c:'up'},{l:'총 인바디',v:ibT,u:'건',s:'누적'},{l:'총 운동 완료',v:exT,u:'일',s:'누적',c:'up'}].map(m=>`<div class="mc"><div class="mc-l">${m.l}</div><div class="mc-v">${m.v}<span>${m.u}</span></div><div class="mc-s ${m.c||''}">${m.s}</div></div>`).join('');
+  const wL=[],wD=[];uids.forEach(uid=>{const d=allData[uid];const f=getFirstIb(d),l=getLatestIb(d);if(f&&l&&f.date!==l.date){wL.push(getName(uid,d));wD.push(+(f.weight-l.weight).toFixed(1));}});
+  if(wC)wC.destroy();if(wL.length){wC=new Chart(document.getElementById('wC'),{type:'bar',data:{labels:wL,datasets:[{label:'감량',data:wD,backgroundColor:wD.map(v=>v>0?'rgba(74,222,128,.65)':'rgba(248,113,113,.65)'),borderRadius:4,borderWidth:0}]},options:{...CB}});}
+  const eL=[],eD=[];uids.forEach(uid=>{const d=allData[uid];eL.push(getName(uid,d));eD.push(+getExRate(d).toFixed(0));});
+  if(eC)eC.destroy();if(eL.length){eC=new Chart(document.getElementById('eC'),{type:'doughnut',data:{labels:eL.map((l,i)=>`${l} ${eD[i]}%`),datasets:[{data:eD,backgroundColor:['#4ade80','#60a5fa','#fbbf24','#f87171','#a78bfa','#34d399','#fb923c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a7875',font:{size:11},boxWidth:8,padding:10},position:'right'}},cutout:'55%'}});}
+  const rows=uids.map(uid=>{const d=allData[uid];const l=getLatestIb(d);const ld=getLastDate(d);const isA=ld&&ld>=a7;return`<tr onclick="openPanel('${uid}')"><td><b>${getName(uid,d)}</b></td><td class="mono">${l?fmt(l.weight)+' kg':'-'}</td><td>${Object.keys(d?.diet||{}).filter(k=>k>=a7).length}건</td><td>${Object.keys(d?.exercise||{}).filter(k=>k>=a7&&exDone(d.exercise[k])).length}일</td><td><span class="badge ${isA?'green':'gray'}">${isA?'활성':'비활성'}</span></td></tr>`;}).join('');
+  document.getElementById('db-recent').innerHTML=`<div class="tw"><table><thead><tr><th>사용자</th><th>최근 체중</th><th>7일 식단</th><th>7일 운동</th><th>상태</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="empty">데이터 없음</td></tr>'}</tbody></table></div>`;
+}
+
+function renderUsers(){filteredUids=Object.keys(allData);document.getElementById('u-cnt').textContent=`총 ${filteredUids.length}명`;renderUserTable(filteredUids);}
+function filterUsers(){const q=document.getElementById('u-search').value.trim().toLowerCase();filteredUids=Object.keys(allData).filter(uid=>{const d=allData[uid];return!q||getName(uid,d).toLowerCase().includes(q)||uid.includes(q);});document.getElementById('u-cnt').textContent=`${filteredUids.length}명`;renderUserTable(filteredUids);}
+function renderUserTable(uids){
+  const now=td();
+  document.getElementById('u-tbody').innerHTML=uids.map(uid=>{
+    const d=allData[uid];const f=getFirstIb(d),l=getLatestIb(d);
+    const wDiff=f&&l&&f.date!==l.date?+(l.weight-f.weight).toFixed(1):null;
+    const ld=getLastDate(d),dl=d?.goals?.deadline;
+    const ddiff=dl?Math.ceil((new Date(dl)-new Date(now))/86400000):null;
+    const ibC=Object.keys(d?.inbody||{}).length,dietC=Object.keys(d?.diet||{}).length;
+    const exAll=Object.keys(d?.exercise||{}).filter(k=>k<=now),exD=exAll.filter(k=>exDone(d.exercise[k]));
+    const isA=ld&&ld>=ago7();
+    return`<tr onclick="openPanel('${uid}')"><td><b>${getName(uid,d)}</b></td><td class="mono">${l?fmt(l.weight)+' kg':'-'}</td><td class="mono">${wDiff!=null?`<span style="color:${wDiff<0?'var(--accent)':'var(--danger)'}">${wDiff>0?'+':''}${wDiff} kg</span>`:'-'}</td><td>${ibC}건</td><td>${dietC}건</td><td class="mono">${exAll.length?`${exD.length}/${exAll.length} (${(exD.length/exAll.length*100).toFixed(0)}%)`:'-'}</td><td class="mono" style="color:var(--tx2)">${ld?fmtD(ld):'-'}</td><td>${ddiff!=null?`<span style="color:${ddiff<14?'var(--warn)':ddiff<0?'var(--danger)':'var(--tx2)'}">D-${ddiff}</span>`:'-'}</td><td><span class="badge ${isA?'green':'gray'}">${isA?'활성':'비활성'}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="9" class="empty">사용자 없음</td></tr>';
+}
+
+function renderAnalytics(){
+  const uids=Object.keys(allData);let tLoss=0,tEx=0,tDiet=0;
+  uids.forEach(uid=>{const d=allData[uid];const f=getFirstIb(d),l=getLatestIb(d);if(f&&l&&f.date!==l.date)tLoss+=f.weight-l.weight;tEx+=getExRate(d);tDiet+=Object.keys(d?.diet||{}).length;});
+  document.getElementById('mg-ana').innerHTML=[{l:'총 감량 합계',v:tLoss.toFixed(1),u:'kg',c:'up'},{l:'평균 운동 달성률',v:(uids.length?tEx/uids.length:0).toFixed(0),u:'%'},{l:'총 식단 기록',v:tDiet,u:'건'},{l:'사용자 수',v:uids.length,u:'명'}].map(m=>`<div class="mc"><div class="mc-l">${m.l}</div><div class="mc-v">${m.v}<span>${m.u}</span></div><div class="mc-s ${m.c||''}"></div></div>`).join('');
+  const wL=[],wS=[],wN=[];uids.forEach(uid=>{const d=allData[uid];const f=getFirstIb(d),l=getLatestIb(d);if(f&&l){wL.push(getName(uid,d));wS.push(f.weight);wN.push(l.weight);}});
+  if(awC)awC.destroy();if(wL.length){awC=new Chart(document.getElementById('awC'),{type:'bar',data:{labels:wL,datasets:[{label:'시작',data:wS,backgroundColor:'rgba(248,113,113,.5)',borderRadius:3,borderWidth:0},{label:'현재',data:wN,backgroundColor:'rgba(74,222,128,.65)',borderRadius:3,borderWidth:0}]},options:{...CB,plugins:{legend:{labels:{color:'#7a7875',font:{size:11},boxWidth:8}}}}});}
+  const cM={};uids.forEach(uid=>{Object.entries(allData[uid]?.diet||{}).forEach(([dt,v])=>{if(!cM[dt])cM[dt]=[];cM[dt].push(v.kcal);});});
+  const cDates=Object.keys(cM).sort().slice(-14);const cAvg=cDates.map(dt=>{const a=cM[dt];return+(a.reduce((s,v)=>s+v,0)/a.length).toFixed(0);});
+  if(acC)acC.destroy();if(cDates.length){acC=new Chart(document.getElementById('acC'),{type:'line',data:{labels:cDates.map(fmtD),datasets:[{label:'평균',data:cAvg,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.1)',borderWidth:2,pointRadius:3,fill:true,tension:.35}]},options:{...CB}});}
+  document.getElementById('gp').innerHTML=uids.map(uid=>{
+    const d=allData[uid];const g=d?.goals;const f=getFirstIb(d),l=getLatestIb(d);if(!g||!f||!l)return'';
+    const wT=Math.abs(f.weight-g.weight),wD2=Math.abs(l.weight-g.weight);const wP=wT>0?Math.max(0,Math.min(100,(wT-wD2)/wT*100)):0;
+    const fpN=l.fat&&l.weight?l.fat/l.weight*100:null;const fpP=fpN&&g.fatPct?Math.max(0,Math.min(100,100-(fpN-g.fatPct)/g.fatPct*100)):0;
+    const exP=getExRate(d);
+    return`<div style="margin-bottom:12px;padding:12px 14px;background:var(--bg3);border-radius:var(--r)"><div style="font-size:13px;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between"><span>${getName(uid,d)}</span><span style="font-size:11px;color:var(--tx2)">${g.deadline||''}</span></div><div class="pbar-row"><div class="pbar-l">체중</div><div class="pbar-t"><div class="pbar-f" style="width:${wP.toFixed(0)}%;background:#4ade80"></div></div><div class="pbar-p">${wP.toFixed(0)}%</div></div><div class="pbar-row"><div class="pbar-l">체지방률</div><div class="pbar-t"><div class="pbar-f" style="width:${fpP.toFixed(0)}%;background:#fbbf24"></div></div><div class="pbar-p">${fpP.toFixed(0)}%</div></div><div class="pbar-row"><div class="pbar-l">운동</div><div class="pbar-t"><div class="pbar-f" style="width:${exP.toFixed(0)}%;background:#60a5fa"></div></div><div class="pbar-p">${exP.toFixed(0)}%</div></div></div>`;
+  }).filter(Boolean).join('')||'<div class="empty">목표를 설정한 사용자가 없습니다</div>';
+}
+
+function openPanel(uid){selUid=uid;refreshPanel(uid);document.getElementById('panel').classList.add('open');document.getElementById('overlay').classList.add('on');}
+function closePanel(){document.getElementById('panel').classList.remove('open');document.getElementById('overlay').classList.remove('on');selUid=null;}
+function refreshPanel(uid){
+  const d=allData[uid];const name=getName(uid,d);
+  document.getElementById('pn-av').textContent=name.charAt(0).toUpperCase();
+  document.getElementById('pn-name').textContent=name;
+  document.getElementById('pn-uid').textContent=uid;
+  const l=getLatestIb(d),f=getFirstIb(d);const wDiff=f&&l&&f.date!==l.date?+(l.weight-f.weight).toFixed(1):null;
+  document.getElementById('pn-stats').innerHTML=[{l:'체중 변화',v:wDiff!=null?`${wDiff>0?'+':''}${wDiff} kg`:'—',col:wDiff!=null?(wDiff<0?'var(--accent)':'var(--danger)'):''},{l:'인바디',v:Object.keys(d?.inbody||{}).length+'건'},{l:'식단',v:Object.keys(d?.diet||{}).length+'건'},{l:'운동 달성률',v:getExRate(d).toFixed(0)+'%'}].map(s=>`<div class="pchip">${s.l} <b style="${s.col?'color:'+s.col:''}">${s.v}</b></div>`).join('');
+  renderPtInbody(uid,d);renderPtDiet(uid,d);renderPtExercise(uid,d);renderPtGoals(uid,d);
+}
+function switchTab(tab,btn){document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.pcon').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById('pt-'+tab).classList.add('active');}
+
+function renderPtInbody(uid,d){
+  const rows=Object.entries(d?.inbody||{}).sort((a,b)=>b[0].localeCompare(a[0]));
+  document.getElementById('pt-inbody').innerHTML=(rows.length?`<div class="mtw"><table><thead><tr><th>날짜</th><th>체중</th><th>골격근</th><th>체지방</th><th>체지방률</th><th>BMR</th><th></th></tr></thead><tbody>${rows.map(([dt,v])=>`<tr><td>${dt}</td><td class="mono">${fmt(v.weight)}</td><td class="mono">${v.muscle?fmt(v.muscle):'-'}</td><td class="mono">${v.fat?fmt(v.fat):'-'}</td><td class="mono">${v.fat&&v.weight?(v.fat/v.weight*100).toFixed(1)+'%':'-'}</td><td class="mono">${v.bmr||'-'}</td><td><button class="btn btn-d btn-sm" onclick="delIbRow('${uid}','${dt}')">삭제</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">인바디 기록 없음</div>')+`<div class="edit-box"><div class="edit-title">인바디 추가 / 수정</div><div class="fgrid"><div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="ei-dt" value="${td()}"></div><div class="fg"><label class="fl">체중(kg)</label><input type="number" step="0.1" class="fi" id="ei-w" placeholder="85.7"></div><div class="fg"><label class="fl">골격근량(kg)</label><input type="number" step="0.1" class="fi" id="ei-m" placeholder="31.3"></div><div class="fg"><label class="fl">체지방량(kg)</label><input type="number" step="0.1" class="fi" id="ei-f" placeholder="30.5"></div><div class="fg"><label class="fl">기초대사량</label><input type="number" class="fi" id="ei-b" placeholder="1562"></div></div><button class="btn btn-p btn-sm" onclick="saveIbRow('${uid}')">저장</button></div>`;
+}
+async function saveIbRow(uid){
+  const dt=document.getElementById('ei-dt').value,w=+document.getElementById('ei-w').value;
+  if(!dt||!w){showToast('날짜와 체중은 필수입니다','err');return;}
+  await dbSet(`users/${uid}/inbody/${dt}`,{date:dt,weight:w,muscle:+document.getElementById('ei-m').value||null,fat:+document.getElementById('ei-f').value||null,bmr:+document.getElementById('ei-b').value||null});
+  showToast('인바디 저장!','ok');
+}
+async function delIbRow(uid,dt){if(!confirm(`${dt} 인바디 기록 삭제?`))return;await dbDel(`users/${uid}/inbody/${dt}`);showToast('삭제 완료','ok');}
+
+function renderPtDiet(uid,d){
+  const rows=Object.entries(d?.diet||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,20);
+  document.getElementById('pt-diet').innerHTML=(rows.length?`<div class="mtw"><table><thead><tr><th>날짜</th><th>탄(g)</th><th>단(g)</th><th>지(g)</th><th>kcal</th><th></th></tr></thead><tbody>${rows.map(([dt,v])=>`<tr><td>${dt}</td><td class="mono">${v.carb?fmt(v.carb):'-'}</td><td class="mono">${v.protein?fmt(v.protein):'-'}</td><td class="mono">${v.fat?fmt(v.fat):'-'}</td><td class="mono">${v.kcal}</td><td><button class="btn btn-d btn-sm" onclick="delDietRow('${uid}','${dt}')">삭제</button></td></tr>`).join('')}</tbody></table></div><div style="font-size:10px;color:var(--tx3);margin-bottom:8px">최근 20건만 표시</div>`:'<div class="empty">식단 기록 없음</div>')+`<div class="edit-box"><div class="edit-title">식단 추가 / 수정</div><div class="fgrid"><div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="ed-dt" value="${td()}"></div><div class="fg"><label class="fl">칼로리(kcal)</label><input type="number" class="fi" id="ed-k" placeholder="940"></div><div class="fg"><label class="fl">탄수화물(g)</label><input type="number" step="0.1" class="fi" id="ed-c" placeholder="100"></div><div class="fg"><label class="fl">단백질(g)</label><input type="number" step="0.1" class="fi" id="ed-p" placeholder="100"></div><div class="fg"><label class="fl">지방(g)</label><input type="number" step="0.1" class="fi" id="ed-f" placeholder="22"></div></div><button class="btn btn-p btn-sm" onclick="saveDietRow('${uid}')">저장</button></div>`;
+}
+async function saveDietRow(uid){
+  const dt=document.getElementById('ed-dt').value,kcal=+document.getElementById('ed-k').value;
+  if(!dt||!kcal){showToast('날짜와 칼로리는 필수입니다','err');return;}
+  await dbSet(`users/${uid}/diet/${dt}`,{date:dt,kcal,carb:+document.getElementById('ed-c').value||null,protein:+document.getElementById('ed-p').value||null,fat:+document.getElementById('ed-f').value||null});
+  showToast('식단 저장!','ok');
+}
+async function delDietRow(uid,dt){if(!confirm(`${dt} 식단 삭제?`))return;await dbDel(`users/${uid}/diet/${dt}`);showToast('삭제 완료','ok');}
+
+function renderPtExercise(uid,d){
+  const rows=Object.entries(d?.exercise||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,20);
+  document.getElementById('pt-exercise').innerHTML=(rows.length?`<div class="mtw"><table><thead><tr><th>날짜</th><th>완료</th><th>종류</th><th>시간</th><th>메모</th><th></th></tr></thead><tbody>${rows.map(([dt,v])=>{const done=exDone(v);const obj=exObj(v);return`<tr><td>${dt}</td><td><span class="badge ${done?'green':'red'}">${done?'O':'X'}</span></td><td style="font-size:10px;color:var(--tx2)">${obj.types?.join(', ')||'-'}</td><td class="mono">${obj.duration?obj.duration+'분':'-'}</td><td style="font-size:10px;color:var(--tx2)">${obj.notes||'-'}</td><td><button class="btn btn-d btn-sm" onclick="delExRow('${uid}','${dt}')">삭제</button></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty">운동 기록 없음</div>')+`<div class="edit-box"><div class="edit-title">운동 추가 / 수정</div><div class="fgrid"><div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="ee-dt" value="${td()}"></div><div class="fg"><label class="fl">완료 여부</label><select class="fi" id="ee-done"><option value="true">완료 (O)</option><option value="false">미운동 (X)</option></select></div><div class="fg"><label class="fl">시간(분)</label><input type="number" class="fi" id="ee-dur" placeholder="60"></div><div class="fg"><label class="fl">메모</label><input type="text" class="fi" id="ee-note" placeholder="오늘의 운동"></div></div><button class="btn btn-p btn-sm" onclick="saveExRow('${uid}')">저장</button></div>`;
+}
+async function saveExRow(uid){
+  const dt=document.getElementById('ee-dt').value;if(!dt){showToast('날짜를 입력하세요','err');return;}
+  await dbSet(`users/${uid}/exercise/${dt}`,{done:document.getElementById('ee-done').value==='true',duration:+document.getElementById('ee-dur').value||null,notes:document.getElementById('ee-note').value||null,types:[]});
+  showToast('운동 기록 저장!','ok');
+}
+async function delExRow(uid,dt){if(!confirm(`${dt} 운동 기록 삭제?`))return;await dbDel(`users/${uid}/exercise/${dt}`);showToast('삭제 완료','ok');}
+
+function renderPtGoals(uid,d){
+  const g=d?.goals||{};
+  document.getElementById('pt-goals').innerHTML=`<div class="edit-box"><div class="edit-title">목표 설정 수정</div><div class="fgrid"><div class="fg"><label class="fl">이름</label><input type="text" class="fi" id="eg-name" value="${g.name||''}"></div><div class="fg"><label class="fl">목표 체중(kg)</label><input type="number" step="0.1" class="fi" id="eg-w" value="${g.weight||''}" oninput="calcFKA()"></div><div class="fg"><label class="fl">목표 골격근(kg)</label><input type="number" step="0.1" class="fi" id="eg-m" value="${g.muscle||''}"></div><div class="fg"><label class="fl">목표 체지방률(%)</label><input type="number" step="0.1" class="fi" id="eg-fp" value="${g.fatPct||''}" oninput="calcFKA()"></div><div class="fg"><label class="fl">목표 체지방량(kg) <span style="color:var(--info);font-size:9px">자동</span></label><input type="number" step="0.1" class="fi" id="eg-fk" value="${g.fatKg||''}" readonly></div><div class="fg"><label class="fl">목표일</label><input type="date" class="fi" id="eg-dl" value="${g.deadline||''}"></div></div><button class="btn btn-p btn-sm" onclick="saveGoals('${uid}')">저장</button></div><div style="margin-top:10px;background:var(--bg3);border-radius:var(--r);padding:12px"><div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px">UID</div><div style="font-family:'DM Mono',monospace;font-size:11px;word-break:break-all;color:var(--tx)">${uid}</div></div>`;
+}
+function calcFKA(){const w=+document.getElementById('eg-w').value,p=+document.getElementById('eg-fp').value;if(w>0&&p>0)document.getElementById('eg-fk').value=(w*p/100).toFixed(1);}
+async function saveGoals(uid){
+  const w=+document.getElementById('eg-w').value,p=+document.getElementById('eg-fp').value;
+  await dbSet(`users/${uid}/goals`,{name:document.getElementById('eg-name').value,weight:w,muscle:+document.getElementById('eg-m').value,fatPct:p,fatKg:w&&p?+(w*p/100).toFixed(1):0,deadline:document.getElementById('eg-dl').value});
+  showToast('목표 저장 완료!','ok');
+}
+
+async function delData(type){
+  if(!selUid)return;const name=getName(selUid,allData[selUid]);
+  const labels={inbody:'인바디',diet:'식단',exercise:'운동',all:'전체'};
+  if(!confirm(`[${name}]의 ${labels[type]} 데이터를 삭제합니다.\n복구 불가 — 계속할까요?`))return;
+  try{if(type==='all'){await dbDel(`users/${selUid}`);closePanel();}else{await dbDel(`users/${selUid}/${type}`);}showToast(`${labels[type]} 삭제 완료`,'ok');}
+  catch(e){showToast('삭제 실패: '+e.message,'err');}
+}
+
+async function dbSet(path,val){try{await ADM.set(ADM.ref(ADM.db,path),val);}catch(e){showToast('저장 실패: '+e.message,'err');throw e;}}
+async function dbDel(path){try{await ADM.remove(ADM.ref(ADM.db,path));}catch(e){showToast('삭제 실패: '+e.message,'err');throw e;}}
+
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='';if(type)t.classList.add(type);t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+</script>
+</body>
+</html>
