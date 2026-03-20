@@ -783,7 +783,7 @@ function renderInsights(){
   if(rd.length){
     const avg=rd.reduce((s,d)=>s+d.kcal,0)/rd.length;
     const cur=latestIb();
-    // 최근 7일 각 날짜의 목표 소모 칼로리(deficit)와 실제 적자를 평균냄
+    // 최근 7일 각 날짜의 목표 소모 칼로리(deficit)와 실제 소모를 평균냄
     const deficits=rd.map(d=>{
       const r=calcDailyTarget(d.date);
       if(!r)return null;
@@ -798,9 +798,9 @@ function renderInsights(){
       const avgRequired=deficits.reduce((s,v)=>s+v.required,0)/deficits.length;
       const avgActual=deficits.reduce((s,v)=>s+v.actual,0)/deficits.length;
       if(avgActual<avgRequired){
-        ins.push({t:'bad',i:'↑',m:`7일 평균 실제 적자 ${avgActual.toFixed(0)}kcal — 목표 소모(${avgRequired.toFixed(0)}kcal) 미달. 감량 페이스가 늦어지고 있어요`});
+        ins.push({t:'bad',i:'↑',m:`7일 평균 실제 소모 ${avgActual.toFixed(0)}kcal — 목표 소모(${avgRequired.toFixed(0)}kcal) 미달. 감량 페이스가 늦어지고 있어요`});
       } else {
-        ins.push({t:'good',i:'✓',m:`7일 평균 적자 ${avgActual.toFixed(0)}kcal — 목표 소모(${avgRequired.toFixed(0)}kcal) 달성 중!`});
+        ins.push({t:'good',i:'✓',m:`7일 평균 소모 ${avgActual.toFixed(0)}kcal — 목표 소모(${avgRequired.toFixed(0)}kcal) 달성 중!`});
       }
     }
   }
@@ -1165,7 +1165,7 @@ function getExerciseKcal(dateStr){
 }
 
 // 특정 날짜 기준 일별 섭취 목표 칼로리 역산
-// 공식: BMR - 하루필요적자 (운동 소모는 '소모 칼로리' 항목에 별도 표시)
+// 공식: BMR - 하루필요소모 (운동 소모는 '소모 칼로리' 항목에 별도 표시)
 // 체지방 1kg = 약 7700 kcal
 function calcDailyTarget(forDate){
   const cur=latestIb();
@@ -1188,13 +1188,13 @@ function renderDietSection(){
   // 테이블
   document.getElementById('d-tbody').innerHTML=sorted.map(r=>{
     const res=calcDailyTarget(r.date);
-    const deficit=res?res.deficit:null;   // 목표 소모 칼로리 = 하루 필요 적자
+    const deficit=res?res.deficit:null;   // 목표 소모 칼로리 = 하루 필요 소모
     const exKcal=res?res.exKcal:0;
     const bmr=res?res.bmr:(latestIb()?.bmr||null);
     const totalBurn=bmr?(bmr+exKcal):null;
-    // 실제 적자 = 소모 - 섭취
+    // 실제 소모 = 소모 - 섭취
     const actualDeficit=totalBurn!=null?totalBurn-r.kcal:null;
-    // 목표 대비 = 실제 적자 - 목표 소모 칼로리 (양수=초과 달성, 음수=부족)
+    // 목표 대비 = 실제 소모 - 목표 소모 칼로리 (양수=초과 달성, 음수=부족)
     const diff=actualDeficit!=null&&deficit!=null?actualDeficit-deficit:null;
     // 소모 칼로리 표시: BMR + 운동소모
     let burnDisplay='-';
@@ -1242,7 +1242,7 @@ function renderDietSection(){
               if(idx==null)return;
               const d=asc[idx];const r=calcDailyTarget(d.date);
               if(!r)return;
-              const lines=[`  BMR: ${r.bmr} kcal`,`  필요 적자: -${r.deficit} kcal`];
+              const lines=[`  BMR: ${r.bmr} kcal`,`  필요 소모: -${r.deficit} kcal`];
               if(r.exKcal>0)lines.push(`  운동 소모: +${r.exKcal} kcal`);
               return lines;
             }
@@ -1469,7 +1469,7 @@ function renderWeeklyReport(){
   const exDone7=exDays.filter(d=>exDone(exercise[d]));
   const exRate=exDays.length?Math.round(exDone7.length/exDays.length*100):null;
 
-  // 평균 칼로리 적자
+  // 평균 칼로리 소모
   const deficits=recentDiet.map(d=>{
     const r=calcDailyTarget(d.date);
     if(!r)return null;
@@ -1499,7 +1499,7 @@ function renderWeeklyReport(){
           <div class="wr-sub">${exDone7.length}/${exDays.length}일</div>
         </div>
         <div class="wr-item">
-          <div class="wr-label">평균 일별 적자</div>
+          <div class="wr-label">평균 일별 소모</div>
           <div class="wr-value" style="color:${avgDeficit!=null?(avgDeficit>0?'var(--accent)':'var(--danger)'):'var(--text-primary)'}">${avgDeficit!=null?avgDeficit:'—'}<span>${avgDeficit!=null?'kcal':''}</span></div>
           <div class="wr-sub">${recentDiet.length}일 기록</div>
         </div>
