@@ -412,11 +412,11 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <button class="btn btn-p" onclick="addDiet()">기록 추가</button>
       </div>
       <div class="grid-2">
-        <div class="card"><div class="sl">칼로리 추이 & 일별 목표</div><div class="chart-wrap"><canvas id="dTrendChart"></canvas></div></div>
+        <div class="card"><div class="sl">칼로리 추이 & 일별 섭취 목표</div><div class="chart-wrap"><canvas id="dTrendChart"></canvas></div></div>
         <div class="card"><div class="sl">섭취 패턴 (목표 대비)</div><div class="chart-wrap"><canvas id="macroChart"></canvas></div></div>
       </div>
       <div class="card"><div class="sl">기록 내역</div>
-        <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>소모 (kcal)</th><th>일별 목표 (kcal)</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
+        <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>소모 (kcal)</th><th>일별 섭취 목표 (kcal)</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
       </div>
     </section>
 
@@ -716,7 +716,7 @@ function renderInsights(){
       ins.push({t:'warn',i:'⚠',m:`7일 평균 섭취 ${avg.toFixed(0)}kcal — 800kcal 미만은 기초대사량 저하 위험이 있어요`});
     } else if(avgTarget!=null&&avg>avgTarget){
       // 목표 칼로리를 초과하면 적자가 생기지 않아 감량 불가
-      ins.push({t:'bad',i:'↑',m:`7일 평균 ${avg.toFixed(0)}kcal — 일별 목표(${avgTarget.toFixed(0)}kcal) 초과. 감량 페이스가 늦어지고 있어요`});
+      ins.push({t:'bad',i:'↑',m:`7일 평균 ${avg.toFixed(0)}kcal — 일별 섭취 목표(${avgTarget.toFixed(0)}kcal) 초과. 감량 페이스가 늦어지고 있어요`});
     } else if(avgTarget!=null){
       ins.push({t:'good',i:'✓',m:`7일 평균 ${avg.toFixed(0)}kcal — 목표 범위 내 식사 잘 유지 중!`});
     }
@@ -1081,9 +1081,8 @@ function getExerciseKcal(dateStr){
   return Math.round(avg*duration);
 }
 
-// 특정 날짜 기준 일별 목표 칼로리 역산
-// 공식: BMR - 하루필요적자 + 운동소모칼로리
-// (운동으로 추가 소모한 만큼 더 먹을 수 있어 목표 칼로리가 올라감)
+// 특정 날짜 기준 일별 섭취 목표 칼로리 역산
+// 공식: BMR - 하루필요적자 (운동 소모는 '소모 칼로리' 항목에 별도 표시)
 // 체지방 1kg = 약 7700 kcal
 function calcDailyTarget(forDate){
   const cur=latestIb();
@@ -1094,11 +1093,8 @@ function calcDailyTarget(forDate){
   const dailyDeficit=totalDeficit/daysLeft;
   const bmr=cur.bmr||1500;
   const exKcal=getExerciseKcal(forDate);
-  // 기본 목표(운동 제외)와 운동 소모분을 분리
-  // 목표 대비 = 섭취 - (기본목표 + 운동소모) 로 계산해야 운동 효과가 정확히 반영됨
-  const baseTarget=Math.max(800,Math.round(bmr-dailyDeficit));
-  const effectiveTarget=baseTarget+exKcal;
-  return{target:effectiveTarget,baseTarget,exKcal,bmr:Math.round(bmr),deficit:Math.round(dailyDeficit)};
+  const target=Math.max(800,Math.round(bmr-dailyDeficit));
+  return{target,exKcal,bmr:Math.round(bmr),deficit:Math.round(dailyDeficit)};
 }
 
 function renderDietSection(){
@@ -1109,35 +1105,23 @@ function renderDietSection(){
   // 테이블
   document.getElementById('d-tbody').innerHTML=sorted.map(r=>{
     const res=calcDailyTarget(r.date);
-    const effectiveTarget=res?res.target:null;
-    const baseTarget=res?res.baseTarget:null;
+    const target=res?res.target:null;
     const exKcal=res?res.exKcal:0;
     const bmr=res?res.bmr:(latestIb()?.bmr||null);
-    // 소모 칼로리 = BMR + 운동 소모
     const totalBurn=bmr?(bmr+exKcal):null;
-    const diff=effectiveTarget!=null?r.kcal-effectiveTarget:null;
-    let targetDisplay='-';
-    if(baseTarget!=null){
-      if(exKcal>0){
-        targetDisplay=`${baseTarget}<span style="font-size:10px;color:var(--accent);margin-left:4px">+${exKcal}</span><span style="font-size:10px;color:var(--text-muted);margin-left:2px">→</span><b style="margin-left:4px;color:var(--info)">${effectiveTarget}</b>`;
-      } else {
-        targetDisplay=`${baseTarget}`;
-      }
-    }
-    // 소모 칼로리 표시: BMR + 운동소모
+    const diff=target!=null?r.kcal-target:null;
+    // 소모 칼로리: BMR + 운동소모
     let burnDisplay='-';
     if(totalBurn){
-      if(exKcal>0){
-        burnDisplay=`<span style="color:var(--text-secondary)">${bmr}</span><span style="font-size:10px;color:var(--accent);margin-left:4px">+${exKcal}</span><span style="font-size:10px;color:var(--text-muted);margin-left:2px">=</span><b style="margin-left:4px">${totalBurn}</b>`;
-      } else {
-        burnDisplay=`${bmr}`;
-      }
+      burnDisplay=exKcal>0
+        ?`<span style="color:var(--text-secondary)">${bmr}</span><span style="font-size:10px;color:var(--accent);margin-left:4px">+${exKcal}</span><span style="font-size:10px;color:var(--text-muted);margin-left:2px">=</span><b style="margin-left:4px">${totalBurn}</b>`
+        :`${bmr}`;
     }
     return`<tr>
       <td class="dc">${r.date}</td>
       <td class="mono">${r.kcal}</td>
       <td class="mono">${burnDisplay}</td>
-      <td class="mono">${targetDisplay}</td>
+      <td class="mono">${target!=null?target:'-'}</td>
       <td class="mono" style="${diff!=null?(diff<=0?'color:var(--accent)':'color:var(--danger)'):''}">${diff!=null?`${diff>=0?'+':''}${diff}`:'-'}</td>
       <td><button class="xbtn" onclick="delDiet('${r.date}')">✕</button></td>
     </tr>`;
@@ -1155,7 +1139,7 @@ function renderDietSection(){
       labels:asc.map(d=>fmtD(d.date)),
       datasets:[
         {label:'실제 섭취',data:asc.map(d=>d.kcal),backgroundColor:'#60a5fa88',borderColor:'#60a5fa',borderWidth:1,borderRadius:3},
-        {label:'일별 목표',data:targetData,type:'line',borderColor:'#4ade80',borderWidth:1.5,
+        {label:'일별 섭취 목표',data:targetData,type:'line',borderColor:'#4ade80',borderWidth:1.5,
           pointRadius,pointBackgroundColor:pointColors,fill:false,tension:.3,spanGaps:true}
       ]
     },
