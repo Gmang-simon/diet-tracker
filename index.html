@@ -325,13 +325,8 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
       <div class="grid-2">
         <div class="card">
           <div class="sl">추이</div>
-          <div class="stabs">
-            <button class="stab active" onclick="switchDC('weight',this)">체중</button>
-            <button class="stab" onclick="switchDC('muscle',this)">골격근</button>
-            <button class="stab" onclick="switchDC('fat_pct',this)">체지방률</button>
-            <button class="stab" onclick="switchDC('kcal',this)">칼로리</button>
-          </div>
-          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          <div class="chart-wrap" style="height:240px"><canvas id="trendChart"></canvas></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:var(--text-secondary)" id="trend-legend"></div>
         </div>
         <div class="card"><div class="sl">신체 구성</div><div class="chart-wrap"><canvas id="compChart"></canvas></div></div>
       </div>
@@ -421,7 +416,7 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div class="card"><div class="sl">섭취 패턴 (목표 대비)</div><div class="chart-wrap"><canvas id="macroChart"></canvas></div></div>
       </div>
       <div class="card"><div class="sl">기록 내역</div>
-        <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>일별 목표 (kcal)</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
+        <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>소모 (kcal)</th><th>일별 목표 (kcal)</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
       </div>
     </section>
 
@@ -672,7 +667,7 @@ let tC=null,cC=null,dcType='weight';
 function renderDashboard(){
   const dd=dday();
   document.getElementById('header-dday').textContent=dd>=0?`D-${dd}`:`D+${Math.abs(dd)}`;
-  renderStatCards();renderProgressBars();renderInsights();renderDC(dcType);renderCompChart();
+  renderStatCards();renderProgressBars();renderInsights();renderDashTrend();renderCompChart();
 }
 function dday(){const dl=goals.deadline;if(!dl)return 0;return Math.ceil((new Date(dl)-new Date(today()))/86400000);}
 
@@ -730,20 +725,103 @@ function renderInsights(){
   document.getElementById('insights').innerHTML=ins.slice(0,4).map(i=>`<div class="ins ${i.t}"><div class="ins-ico">${i.i}</div><div>${i.m}</div></div>`).join('');
 }
 
-function switchDC(type,btn){dcType=type;document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderDC(type);}
-
 const CHART_OPTS={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:'#8a8884',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#8a8884',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}}};
 
-function renderDC(type){
-  const asc=ibArr(),dAsc=dietArr();
-  const col={weight:'#60a5fa',muscle:'#4ade80',fat_pct:'#fb923c',kcal:'#f87171'};
-  const lbl={weight:'체중(kg)',muscle:'골격근(kg)',fat_pct:'체지방률(%)',kcal:'칼로리'};
-  const gl={weight:goals.weight,muscle:goals.muscle,fat_pct:goals.fatPct,kcal:getBMR()};
-  let labels,data,gLine;
-  if(type==='kcal'){labels=dAsc.map(d=>fmtD(d.date));data=dAsc.map(d=>d.kcal);gLine=data.map(()=>gl[type]);}
-  else{labels=asc.map(d=>fmtD(d.date));data=asc.map(d=>type==='fat_pct'?+(d.fat/d.weight*100).toFixed(2):d[type==='weight'?'weight':type==='muscle'?'muscle':'fat']);gLine=data.map(()=>gl[type]);}
+// 대시보드 복합 추이 차트 — 체중/골격근/체지방/체지방률/칼로리 통합
+function renderDashTrend(){
+  const ibAsc=ibArr();
+  const dAsc=dietArr();
+
+  // x축: 인바디 날짜 기준 (칼로리는 해당 날짜가 없으면 null)
+  const labels=ibAsc.map(d=>fmtD(d.date));
+  const dietMap=Object.fromEntries(dAsc.map(d=>[d.date,d.kcal]));
+
+  const datasets=[
+    {
+      label:'체중 (kg)',
+      data:ibAsc.map(d=>d.weight),
+      borderColor:'#60a5fa',backgroundColor:'#60a5fa18',
+      borderWidth:2,pointRadius:3,pointBackgroundColor:'#60a5fa',
+      fill:true,tension:.3,yAxisID:'y',spanGaps:true
+    },
+    {
+      label:'골격근 (kg)',
+      data:ibAsc.map(d=>d.muscle),
+      borderColor:'#4ade80',backgroundColor:'transparent',
+      borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#4ade80',
+      fill:false,tension:.3,yAxisID:'y1',spanGaps:true
+    },
+    {
+      label:'체지방 (kg)',
+      data:ibAsc.map(d=>d.fat),
+      borderColor:'#f87171',backgroundColor:'transparent',
+      borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#f87171',
+      fill:false,tension:.3,yAxisID:'y1',spanGaps:true
+    },
+    {
+      label:'체지방률 (%)',
+      data:ibAsc.map(d=>d.fat&&d.weight?+(d.fat/d.weight*100).toFixed(1):null),
+      borderColor:'#fb923c',backgroundColor:'transparent',
+      borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#fb923c',
+      borderDash:[3,2],fill:false,tension:.3,yAxisID:'y1',spanGaps:true
+    },
+    {
+      label:'섭취 칼로리',
+      data:ibAsc.map(d=>dietMap[d.date]||null),
+      type:'bar',
+      backgroundColor:'#a78bfa44',borderColor:'#a78bfa',borderWidth:1,
+      borderRadius:3,yAxisID:'y2',spanGaps:true
+    },
+  ];
+
   if(tC)tC.destroy();
-  tC=new Chart(document.getElementById('trendChart'),{type:'line',data:{labels,datasets:[{label:lbl[type],data,borderColor:col[type],backgroundColor:col[type]+'22',borderWidth:2,pointRadius:3,pointBackgroundColor:col[type],fill:true,tension:.35,spanGaps:true},{label:'목표',data:gLine,borderColor:col[type]+'55',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false}]},options:{...CHART_OPTS}});
+  tC=new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{mode:'index',intersect:false}
+      },
+      scales:{
+        x:{ticks:{color:'#8a8884',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{
+          position:'left',
+          ticks:{color:'#60a5fa',font:{size:10}},
+          grid:{color:'rgba(255,255,255,.04)'},
+          title:{display:true,text:'체중 (kg)',color:'#60a5fa',font:{size:9}}
+        },
+        y1:{
+          position:'right',
+          ticks:{color:'#4ade80',font:{size:10}},
+          grid:{display:false},
+          title:{display:true,text:'골격근/체지방 (kg / %)',color:'#4ade80',font:{size:9}}
+        },
+        y2:{
+          position:'right',
+          display:false,
+          grid:{display:false}
+        }
+      }
+    }
+  });
+
+  // 커스텀 범례
+  const legendItems=[
+    {color:'#60a5fa',label:'체중'},
+    {color:'#4ade80',label:'골격근'},
+    {color:'#f87171',label:'체지방'},
+    {color:'#fb923c',label:'체지방률',dash:true},
+    {color:'#a78bfa',label:'칼로리'},
+  ];
+  document.getElementById('trend-legend').innerHTML=legendItems.map(l=>
+    `<span style="display:flex;align-items:center;gap:5px">
+      <span style="width:${l.dash?'14px':'10px'};height:${l.dash?'2px':'10px'};background:${l.color};border-radius:${l.dash?'0':'2px'};flex-shrink:0;${l.dash?'border-top:2px dashed '+l.color+';background:transparent':''}"></span>
+      ${l.label}
+    </span>`
+  ).join('');
 }
 
 function renderCompChart(){
@@ -1034,8 +1112,10 @@ function renderDietSection(){
     const effectiveTarget=res?res.target:null;
     const baseTarget=res?res.baseTarget:null;
     const exKcal=res?res.exKcal:0;
+    const bmr=res?res.bmr:(latestIb()?.bmr||null);
+    // 소모 칼로리 = BMR + 운동 소모
+    const totalBurn=bmr?(bmr+exKcal):null;
     const diff=effectiveTarget!=null?r.kcal-effectiveTarget:null;
-    // 표시: 기본목표 (+운동소모 → 실질목표)
     let targetDisplay='-';
     if(baseTarget!=null){
       if(exKcal>0){
@@ -1044,14 +1124,24 @@ function renderDietSection(){
         targetDisplay=`${baseTarget}`;
       }
     }
+    // 소모 칼로리 표시: BMR + 운동소모
+    let burnDisplay='-';
+    if(totalBurn){
+      if(exKcal>0){
+        burnDisplay=`<span style="color:var(--text-secondary)">${bmr}</span><span style="font-size:10px;color:var(--accent);margin-left:4px">+${exKcal}</span><span style="font-size:10px;color:var(--text-muted);margin-left:2px">=</span><b style="margin-left:4px">${totalBurn}</b>`;
+      } else {
+        burnDisplay=`${bmr}`;
+      }
+    }
     return`<tr>
       <td class="dc">${r.date}</td>
       <td class="mono">${r.kcal}</td>
+      <td class="mono">${burnDisplay}</td>
       <td class="mono">${targetDisplay}</td>
       <td class="mono" style="${diff!=null?(diff<=0?'color:var(--accent)':'color:var(--danger)'):''}">${diff!=null?`${diff>=0?'+':''}${diff}`:'-'}</td>
       <td><button class="xbtn" onclick="delDiet('${r.date}')">✕</button></td>
     </tr>`;
-  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">기록 없음</td></tr>';
+  }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">기록 없음</td></tr>';
 
   // 칼로리 추이 차트
   if(dTC)dTC.destroy();
