@@ -416,7 +416,7 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div class="card"><div class="sl">섭취 패턴 (목표 대비)</div><div class="chart-wrap"><canvas id="macroChart"></canvas></div></div>
       </div>
       <div class="card"><div class="sl">기록 내역</div>
-        <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>소모 (kcal)</th><th>일별 섭취 목표 (kcal)</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
+        <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>소모 (kcal)</th><th>목표 소모 칼로리</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
       </div>
     </section>
 
@@ -708,17 +708,26 @@ function renderInsights(){
   const rd=dietArr().slice(-7);
   if(rd.length){
     const avg=rd.reduce((s,d)=>s+d.kcal,0)/rd.length;
-    // 최근 7일 각 날짜의 일별 목표(운동 소모 포함)를 평균냄
-    const targets=rd.map(d=>{const r=calcDailyTarget(d.date);return r?r.target:null;}).filter(v=>v!=null);
-    const avgTarget=targets.length?targets.reduce((s,v)=>s+v,0)/targets.length:null;
+    const cur=latestIb();
+    // 최근 7일 각 날짜의 목표 소모 칼로리(deficit)와 실제 적자를 평균냄
+    const deficits=rd.map(d=>{
+      const r=calcDailyTarget(d.date);
+      if(!r)return null;
+      const bmr=r.bmr,exKcal=r.exKcal;
+      const totalBurn=bmr+exKcal;
+      const actualDeficit=totalBurn-d.kcal;
+      return{required:r.deficit,actual:actualDeficit};
+    }).filter(v=>v!=null);
     if(avg<800){
-      // 너무 적게 먹으면 기초대사량 자체가 떨어짐 — 다이어트 실패로 이어짐
       ins.push({t:'warn',i:'⚠',m:`7일 평균 섭취 ${avg.toFixed(0)}kcal — 800kcal 미만은 기초대사량 저하 위험이 있어요`});
-    } else if(avgTarget!=null&&avg>avgTarget){
-      // 목표 칼로리를 초과하면 적자가 생기지 않아 감량 불가
-      ins.push({t:'bad',i:'↑',m:`7일 평균 ${avg.toFixed(0)}kcal — 일별 섭취 목표(${avgTarget.toFixed(0)}kcal) 초과. 감량 페이스가 늦어지고 있어요`});
-    } else if(avgTarget!=null){
-      ins.push({t:'good',i:'✓',m:`7일 평균 ${avg.toFixed(0)}kcal — 목표 범위 내 식사 잘 유지 중!`});
+    } else if(deficits.length){
+      const avgRequired=deficits.reduce((s,v)=>s+v.required,0)/deficits.length;
+      const avgActual=deficits.reduce((s,v)=>s+v.actual,0)/deficits.length;
+      if(avgActual<avgRequired){
+        ins.push({t:'bad',i:'↑',m:`7일 평균 실제 적자 ${avgActual.toFixed(0)}kcal — 목표 소모(${avgRequired.toFixed(0)}kcal) 미달. 감량 페이스가 늦어지고 있어요`});
+      } else {
+        ins.push({t:'good',i:'✓',m:`7일 평균 적자 ${avgActual.toFixed(0)}kcal — 목표 소모(${avgRequired.toFixed(0)}kcal) 달성 중!`});
+      }
     }
   }
   if(!ins.length)ins.push({t:'info',i:'ℹ',m:'데이터를 기록하면 분석이 시작됩니다'});
@@ -1105,12 +1114,15 @@ function renderDietSection(){
   // 테이블
   document.getElementById('d-tbody').innerHTML=sorted.map(r=>{
     const res=calcDailyTarget(r.date);
-    const target=res?res.target:null;
+    const deficit=res?res.deficit:null;   // 목표 소모 칼로리 = 하루 필요 적자
     const exKcal=res?res.exKcal:0;
     const bmr=res?res.bmr:(latestIb()?.bmr||null);
     const totalBurn=bmr?(bmr+exKcal):null;
-    const diff=target!=null?r.kcal-target:null;
-    // 소모 칼로리: BMR + 운동소모
+    // 실제 적자 = 소모 - 섭취
+    const actualDeficit=totalBurn!=null?totalBurn-r.kcal:null;
+    // 목표 대비 = 실제 적자 - 목표 소모 칼로리 (양수=초과 달성, 음수=부족)
+    const diff=actualDeficit!=null&&deficit!=null?actualDeficit-deficit:null;
+    // 소모 칼로리 표시: BMR + 운동소모
     let burnDisplay='-';
     if(totalBurn){
       burnDisplay=exKcal>0
@@ -1121,8 +1133,8 @@ function renderDietSection(){
       <td class="dc">${r.date}</td>
       <td class="mono">${r.kcal}</td>
       <td class="mono">${burnDisplay}</td>
-      <td class="mono">${target!=null?target:'-'}</td>
-      <td class="mono" style="${diff!=null?(diff<=0?'color:var(--accent)':'color:var(--danger)'):''}">${diff!=null?`${diff>=0?'+':''}${diff}`:'-'}</td>
+      <td class="mono">${deficit!=null?deficit:'-'}</td>
+      <td class="mono" style="${diff!=null?(diff>=0?'color:var(--accent)':'color:var(--danger)'):''}">${diff!=null?`${diff>=0?'+':''}${diff}`:'-'}</td>
       <td><button class="xbtn" onclick="delDiet('${r.date}')">✕</button></td>
     </tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">기록 없음</td></tr>';
@@ -1139,7 +1151,7 @@ function renderDietSection(){
       labels:asc.map(d=>fmtD(d.date)),
       datasets:[
         {label:'실제 섭취',data:asc.map(d=>d.kcal),backgroundColor:'#60a5fa88',borderColor:'#60a5fa',borderWidth:1,borderRadius:3},
-        {label:'일별 섭취 목표',data:targetData,type:'line',borderColor:'#4ade80',borderWidth:1.5,
+        {label:'섭취 목표선',data:targetData,type:'line',borderColor:'#4ade80',borderWidth:1.5,
           pointRadius,pointBackgroundColor:pointColors,fill:false,tension:.3,spanGaps:true}
       ]
     },
