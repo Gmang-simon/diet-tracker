@@ -428,10 +428,10 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div class="sl">직접 입력</div>
         <div class="form-grid">
           <div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="ib-date"></div>
-          <div class="fg"><label class="fl">체중 (kg)</label><input type="number" step="0.1" class="fi" id="ib-weight" placeholder="88.2" inputmode="decimal" oninput="updateIbFatPct()"></div>
-          <div class="fg"><label class="fl">골격근량 (kg)</label><input type="number" step="0.1" class="fi" id="ib-muscle" placeholder="32.1" inputmode="decimal"></div>
-          <div class="fg"><label class="fl">체지방량 (kg)</label><input type="number" step="0.1" class="fi" id="ib-fat" placeholder="31.5" inputmode="decimal" oninput="updateIbFatPct()"></div>
-          <div class="fg"><label class="fl">기초대사량 (kcal)</label><input type="number" class="fi" id="ib-bmr" placeholder="1595" inputmode="numeric"></div>
+          <div class="fg"><label class="fl">체중 (kg)</label><input type="number" step="0.1" class="fi" id="ib-weight" placeholder="체중" inputmode="decimal" oninput="updateIbFatPct()"></div>
+          <div class="fg"><label class="fl">골격근량 (kg)</label><input type="number" step="0.1" class="fi" id="ib-muscle" placeholder="골격근량" inputmode="decimal"></div>
+          <div class="fg"><label class="fl">체지방량 (kg)</label><input type="number" step="0.1" class="fi" id="ib-fat" placeholder="체지방량" inputmode="decimal" oninput="updateIbFatPct()"></div>
+          <div class="fg"><label class="fl">기초대사량 (kcal)</label><input type="number" class="fi" id="ib-bmr" placeholder="기초대사량" inputmode="numeric"></div>
         </div>
         <div id="ib-fat-pct-display" style="display:none;margin-bottom:12px" class="ib-auto-display">
           체지방률 자동 계산: <b id="ib-fat-pct-val">—</b>
@@ -451,7 +451,7 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div class="sl">식단 기록 추가</div>
         <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
           <div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="d-date"></div>
-          <div class="fg"><label class="fl">섭취 칼로리 (kcal)</label><input type="number" class="fi" id="d-kcal" placeholder="940" inputmode="numeric"></div>
+          <div class="fg"><label class="fl">섭취 칼로리 (kcal)</label><input type="number" class="fi" id="d-kcal" placeholder="섭취 칼로리" inputmode="numeric"></div>
         </div>
         <button class="btn btn-p" onclick="addDiet()">기록 추가</button>
       </div>
@@ -459,7 +459,7 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div class="card"><div class="sl">칼로리 추이 & 일별 섭취 목표</div><div class="chart-wrap"><canvas id="dTrendChart"></canvas></div></div>
         <div class="card"><div class="sl">섭취 패턴 (목표 대비)</div><div class="chart-wrap"><canvas id="macroChart"></canvas></div></div>
       </div>
-      <div class="card"><div class="sl">누적 칼로리 적자</div><div class="chart-wrap" style="height:180px"><canvas id="cumDefChart"></canvas></div></div>
+      <div class="card"><div class="sl">누적 소모 칼로리</div><div class="chart-wrap" style="height:180px"><canvas id="cumDefChart"></canvas></div></div>
       <div class="card"><div class="sl">기록 내역</div>
         <div class="tw"><table><thead><tr><th>날짜</th><th>섭취 (kcal)</th><th>소모 (kcal)</th><th>목표 소모 칼로리</th><th>목표 대비</th><th></th></tr></thead><tbody id="d-tbody"></tbody></table></div>
       </div>
@@ -762,7 +762,7 @@ function renderInsights(){
     const days=(new Date(cur.date)-new Date(first.date))/86400000||1;
     const wD=cur.weight-first.weight,mD=cur.muscle-first.muscle;
     if(wD<-1)ins.push({t:'good',i:'↓',m:`${Math.abs(wD).toFixed(1)}kg 감량! 일 ${Math.abs(wD/days).toFixed(2)}kg 페이스`});
-    if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 저항 운동 필요`});
+    if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 근력 운동 필요`});
     else if(mD>=0)ins.push({t:'good',i:'✓',m:'골격근량 유지/증가 중!'});
     const exK=Object.keys(exercise),done=exK.filter(d=>exDone(exercise[d])&&d<=today()).length,total=exK.filter(d=>d<=today()).length;
     const rate=total>0?done/total*100:0;
@@ -1252,7 +1252,7 @@ function renderDietSection(){
     }
   });
 
-  // 누적 칼로리 적자 차트
+  // 누적 소모 칼로리 차트
   let cumChart=window._cumChart||null;
   if(cumChart)cumChart.destroy();
   const cumData=[];let cumSum=0;
@@ -1271,7 +1271,7 @@ function renderDietSection(){
       data:{
         labels:cumData.map(d=>d.x),
         datasets:[
-          {label:'누적 적자',data:cumData.map(d=>d.y),borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.12)',borderWidth:2,pointRadius:2.5,fill:true,tension:.35},
+          {label:'누적 소모',data:cumData.map(d=>d.y),borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.12)',borderWidth:2,pointRadius:2.5,fill:true,tension:.35},
           ...(totalNeeded?[{label:'총 목표',data:cumData.map(()=>Math.round(totalNeeded)),borderColor:'#4ade8066',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false}]:[])
         ]
       },
@@ -1520,7 +1520,7 @@ function renderQuickInput(){
     <div class="quick-input">
       <span class="qi-date">오늘 (${fmtD(td)})</span>
       <span class="qi-label">칼로리</span>
-      <input class="qi-kcal" type="number" id="qi-kcal" placeholder="${todayDiet?todayDiet.kcal:'섭취량'}" inputmode="numeric">
+      <input class="qi-kcal" type="number" id="qi-kcal" placeholder="섭취 칼로리" inputmode="numeric">
       <span class="qi-label">운동</span>
       <button class="qi-ex-btn ${exStatus==='done'?'done':''}" id="qi-ex-done" onclick="qiToggleEx(true)">완료</button>
       <button class="qi-ex-btn ${exStatus==='skip'?'skip':''}" id="qi-ex-skip" onclick="qiToggleEx(false)">미운동</button>
