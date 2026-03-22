@@ -210,16 +210,25 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
 .wr-sub{font-size:11px;color:var(--text-secondary);margin-top:3px;}
 
 /* ── QUICK INPUT ── */
-.quick-input{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.qi-label{font-size:12px;color:var(--text-secondary);font-weight:500;white-space:nowrap;}
-.qi-kcal{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;color:var(--text-primary);font-family:'Pretendard',sans-serif;font-size:14px;outline:none;width:110px;transition:border-color .15s;}
+.quick-input{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:14px;}
+.qi-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.qi-label{font-size:12px;color:var(--text-secondary);font-weight:500;white-space:nowrap;flex-shrink:0;}
+.qi-date{font-size:12px;color:var(--text-muted);margin-right:4px;}
+.qi-kcal{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;color:var(--text-primary);font-family:'Pretendard',sans-serif;font-size:14px;outline:none;width:130px;transition:border-color .15s;}
 .qi-kcal:focus{border-color:var(--accent);}
 .qi-ex-btn{padding:8px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font-family:'Pretendard',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text-secondary);}
 .qi-ex-btn.done{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 .qi-ex-btn.skip{border-color:var(--danger);color:var(--danger);background:var(--danger-dim);}
-.qi-save{background:var(--accent);color:#0e0f11;border:none;font-family:'Pretendard',sans-serif;font-size:12px;font-weight:700;padding:8px 16px;border-radius:var(--r-sm);cursor:pointer;transition:background .15s;white-space:nowrap;}
+.qi-save{background:var(--accent);color:#0e0f11;border:none;font-family:'Pretendard',sans-serif;font-size:12px;font-weight:700;padding:8px 18px;border-radius:var(--r-sm);cursor:pointer;transition:background .15s;white-space:nowrap;margin-left:auto;}
 .qi-save:hover{background:#22c55e;}
-.qi-date{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+.qi-ex-detail{overflow:hidden;max-height:0;transition:max-height .3s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none;}
+.qi-ex-detail.open{max-height:160px;opacity:1;pointer-events:auto;}
+.qi-ex-inner{padding-top:14px;border-top:1px solid var(--border);margin-top:14px;}
+.qi-types{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.qi-type-tag{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;font-family:'Pretendard',sans-serif;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .15s;}
+.qi-type-tag.sel{border-color:var(--info);color:var(--info);background:var(--info-dim);}
+.qi-dur{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 10px;color:var(--text-primary);font-family:'Pretendard',sans-serif;font-size:13px;outline:none;width:90px;transition:border-color .15s;}
+.qi-dur:focus{border-color:var(--accent);}
 
 /* ── AUTO FAT% ── */
 .ib-auto-display{background:var(--info-dim);border:1px solid rgba(96,165,250,.2);border-radius:var(--r-sm);padding:8px 12px;font-size:12px;color:var(--info);text-align:center;}
@@ -1510,41 +1519,75 @@ function renderWeeklyReport(){
 // ═══════════════════════════════════════════
 // 빠른 입력 위젯
 // ═══════════════════════════════════════════
+const QI_TYPES=['웨이트','유산소','필라테스','수영','요가','구기/야외','기타'];
+let qiExState=null, qiTypes=[];
+
 function renderQuickInput(){
   const td=today();
   const todayDiet=diet[td];
   const todayEx=exercise[td];
   const exStatus=todayEx?(exDone(todayEx)?'done':'skip'):null;
+  const existObj=todayEx?exObj(todayEx):null;
+  // 기존 오늘 운동 데이터 복원
+  qiExState=exStatus==='done'?true:exStatus==='skip'?false:null;
+  qiTypes=existObj?.types?[...existObj.types]:[];
+
+  const typeTags=QI_TYPES.map(t=>`<button class="qi-type-tag${qiTypes.includes(t)?' sel':''}" onclick="qiToggleType('${t}',this)">${t}</button>`).join('');
+  const detailOpen=qiExState===true?'open':'';
+  const doneCls=qiExState===true?'done':'';
+  const skipCls=qiExState===false?'skip':'';
 
   document.getElementById('quick-input-widget').innerHTML=`
     <div class="quick-input">
-      <span class="qi-date">오늘 (${fmtD(td)})</span>
-      <span class="qi-label">칼로리</span>
-      <input class="qi-kcal" type="number" id="qi-kcal" placeholder="섭취 칼로리" inputmode="numeric">
-      <span class="qi-label">운동</span>
-      <button class="qi-ex-btn ${exStatus==='done'?'done':''}" id="qi-ex-done" onclick="qiToggleEx(true)">완료</button>
-      <button class="qi-ex-btn ${exStatus==='skip'?'skip':''}" id="qi-ex-skip" onclick="qiToggleEx(false)">미운동</button>
-      <button class="qi-save" onclick="qiSave()">저장</button>
+      <div class="qi-row">
+        <span class="qi-date">오늘 (${fmtD(td)})</span>
+        <span class="qi-label">칼로리</span>
+        <input class="qi-kcal" type="number" id="qi-kcal" placeholder="섭취 칼로리" inputmode="numeric" value="${todayDiet?todayDiet.kcal:''}">
+        <span class="qi-label">운동</span>
+        <button class="qi-ex-btn ${doneCls}" id="qi-ex-done" onclick="qiToggleEx(true)">완료</button>
+        <button class="qi-ex-btn ${skipCls}" id="qi-ex-skip" onclick="qiToggleEx(false)">미운동</button>
+        <button class="qi-save" onclick="qiSave()">저장</button>
+      </div>
+      <div class="qi-ex-detail ${detailOpen}" id="qi-ex-detail">
+        <div class="qi-ex-inner">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+            <span class="qi-label">종류</span>
+            <div class="qi-types">${typeTags}</div>
+            <span class="qi-label" style="margin-left:4px">시간</span>
+            <input class="qi-dur" type="number" id="qi-duration" placeholder="60" inputmode="numeric" value="${existObj?.duration||''}">
+            <span style="font-size:12px;color:var(--text-muted)">분</span>
+          </div>
+        </div>
+      </div>
     </div>`;
 }
 
-let qiExState=null;
 function qiToggleEx(done){
   qiExState=done;
   document.getElementById('qi-ex-done').className='qi-ex-btn'+(done?' done':'');
   document.getElementById('qi-ex-skip').className='qi-ex-btn'+(done===false?' skip':'');
+  const detail=document.getElementById('qi-ex-detail');
+  if(detail) detail.className='qi-ex-detail'+(done?' open':'');
 }
+
+function qiToggleType(t, btn){
+  const idx=qiTypes.indexOf(t);
+  if(idx>=0) qiTypes.splice(idx,1); else qiTypes.push(t);
+  btn.className='qi-type-tag'+(qiTypes.includes(t)?' sel':'');
+}
+
 async function qiSave(){
   const td=today();
   const kcal=+document.getElementById('qi-kcal').value;
   let saved=false;
   if(kcal>0){await dbSet(`diet/${td}`,{date:td,kcal});saved=true;}
   if(qiExState!==null){
+    const dur=+(document.getElementById('qi-duration')?.value||0)||null;
     const cur=exercise[td];const curObj=exDone(cur)?exObj(cur):{};
-    await dbSet(`exercise/${td}`,{...curObj,done:qiExState});saved=true;
+    await dbSet(`exercise/${td}`,{...curObj,done:qiExState,types:qiExState?qiTypes:[],duration:qiExState?dur:null});
+    saved=true;
   }
-  if(saved)toast('오늘 기록 저장!');
-  qiExState=null;
+  if(saved){toast('오늘 기록 저장!');qiExState=null;qiTypes=[];renderQuickInput();}
 }
 
 // ═══════════════════════════════════════════
