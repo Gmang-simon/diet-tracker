@@ -773,10 +773,18 @@ function renderInsights(){
     if(wD<-1)ins.push({t:'good',i:'↓',m:`${Math.abs(wD).toFixed(1)}kg 감량! 일 ${Math.abs(wD/days).toFixed(2)}kg 페이스`});
     if(mD<-0.5)ins.push({t:'warn',i:'⚠',m:`골격근 ${Math.abs(mD).toFixed(1)}kg 감소 — 근력 운동 필요`});
     else if(mD>=0)ins.push({t:'good',i:'✓',m:'골격근량 유지/증가 중!'});
-    const exK=Object.keys(exercise),done=exK.filter(d=>exDone(exercise[d])&&d<=today()).length,total=exK.filter(d=>d<=today()).length;
-    const rate=total>0?done/total*100:0;
-    if(rate<30)ins.push({t:'bad',i:'✗',m:`운동 달성률 ${rate.toFixed(0)}% — 주 3회 이상 목표`});
-    else ins.push({t:'good',i:'✓',m:`운동 달성률 ${rate.toFixed(0)}%`});
+    // 운동 달성률: 최근 7일 기준 (전체 기간 기준은 지나치게 초기 기록에 민감)
+    const week7Ago=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+    const exRecent=Object.keys(exercise).filter(d=>d>week7Ago&&d<=today());
+    const exDone7=exRecent.filter(d=>exDone(exercise[d]));
+    // 최근 7일 기록이 적으면 전체 기간으로 보완
+    const exAll=Object.keys(exercise).filter(d=>d<=today());
+    const exDoneAll=exAll.filter(d=>exDone(exercise[d]));
+    const [rDone,rTotal]=exRecent.length>=3?[exDone7.length,exRecent.length]:[exDoneAll.length,exAll.length];
+    const rate=rTotal>0?rDone/rTotal*100:0;
+    const rateLabel=exRecent.length>=3?'최근 7일':'전체';
+    if(rate<43)ins.push({t:'bad',i:'✗',m:`운동 달성률 ${rate.toFixed(0)}% (${rateLabel}) — 주 3회 이상 목표`});
+    else ins.push({t:'good',i:'✓',m:`운동 달성률 ${rate.toFixed(0)}% (${rateLabel})`});
 
     // 정체기 감지 — 최근 7일 인바디 체중 변화
     const recent7=ibArr().filter(r=>{const diff=(new Date(today())-new Date(r.date))/86400000;return diff<=7;});
