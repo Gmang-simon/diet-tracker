@@ -385,56 +385,17 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
     <!-- INBODY -->
     <section class="section" id="section-inbody">
 
-      <!-- CSV 가져오기 -->
-      <div class="card" id="csv-import-card">
-        <div class="sl">인바디 앱 CSV 가져오기</div>
-        <div id="csv-drop-zone"
-          ondragover="event.preventDefault();this.classList.add('drag-over')"
-          ondragleave="this.classList.remove('drag-over')"
-          ondrop="handleCsvDrop(event)">
-          <div class="csv-drop-icon">↑</div>
-          <div class="csv-drop-title">CSV 파일을 드래그하거나 탭해서 선택</div>
-          <div class="csv-drop-sub">인바디 앱 → 마이페이지 → 데이터 내보내기 → CSV</div>
-          <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(this)">
-          <button class="btn btn-g" style="margin-top:12px;font-size:12px" onclick="document.getElementById('csv-file-input').click()">파일 선택</button>
-        </div>
-
-        <!-- 파싱 결과 미리보기 -->
-        <div id="csv-preview" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:600;color:var(--text-primary)" id="csv-preview-title"></div>
-            <button onclick="resetCsvImport()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px">✕ 취소</button>
-          </div>
-          <div class="tw" style="margin-bottom:12px">
-            <table>
-              <thead><tr>
-                <th><input type="checkbox" id="csv-chk-all" onchange="toggleAllCsvRows(this.checked)" style="accent-color:var(--accent)"></th>
-                <th>날짜</th><th>체중</th><th>골격근</th><th>체지방</th><th>체지방률</th><th>BMR</th><th>상태</th>
-              </tr></thead>
-              <tbody id="csv-preview-tbody"></tbody>
-            </table>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-p" onclick="importCsvSelected()" id="csv-import-btn">선택 항목 가져오기</button>
-            <span style="font-size:12px;color:var(--text-muted)" id="csv-selected-count"></span>
-          </div>
-        </div>
-
-        <!-- 가져오기 안내 -->
-        <div id="csv-howto" style="margin-top:14px">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:500">📱 인바디 앱 CSV 내보내기 방법</div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <div class="csv-step"><span class="csv-step-num">1</span>인바디 앱 실행 → 하단 <b>마이페이지</b> 탭</div>
-            <div class="csv-step"><span class="csv-step-num">2</span>우측 상단 설정(⚙) → <b>데이터 관리</b></div>
-            <div class="csv-step"><span class="csv-step-num">3</span><b>데이터 내보내기</b> → CSV 선택 → 공유/저장</div>
-            <div class="csv-step"><span class="csv-step-num">4</span>저장된 CSV 파일을 이 화면에 업로드</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 직접 입력 -->
+      <!-- 직접 입력 (메인) -->
       <div class="card">
-        <div class="sl">직접 입력</div>
+        <div class="sl" style="justify-content:space-between;align-items:center">
+          <span>직접 입력</span>
+          <button onclick="toggleCsvPanel()" id="csv-toggle-btn"
+            style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 11px;font-family:'Pretendard',sans-serif;font-size:11px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px"
+            onmouseover="this.style.borderColor='var(--border-bright)';this.style.color='var(--text-primary)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+            <span id="csv-toggle-icon">↑</span> CSV 가져오기
+          </button>
+        </div>
         <div class="form-grid">
           <div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="ib-date"></div>
           <div class="fg"><label class="fl">체중 (kg)</label><input type="number" step="0.1" class="fi" id="ib-weight" placeholder="체중" inputmode="decimal" oninput="updateIbFatPct()"></div>
@@ -446,6 +407,58 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
           체지방률 자동 계산: <b id="ib-fat-pct-val">—</b>
         </div>
         <button class="btn btn-p" onclick="addInbody()">기록 추가</button>
+      </div>
+
+      <!-- CSV 가져오기 (접힘 패널) -->
+      <div id="csv-panel" style="overflow:hidden;max-height:0;transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0;pointer-events:none">
+        <div class="card" style="margin-bottom:14px">
+          <div class="sl" style="justify-content:space-between;align-items:center">
+            <span>인바디 앱 CSV 가져오기</span>
+            <button onclick="toggleCsvPanel()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 4px">✕</button>
+          </div>
+          <div id="csv-drop-zone"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="handleCsvDrop(event)">
+            <div class="csv-drop-icon">↑</div>
+            <div class="csv-drop-title">CSV 파일을 드래그하거나 탭해서 선택</div>
+            <div class="csv-drop-sub">인바디 앱 → 마이페이지 → 데이터 내보내기 → CSV</div>
+            <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(this)">
+            <button class="btn btn-g" style="margin-top:12px;font-size:12px" onclick="document.getElementById('csv-file-input').click()">파일 선택</button>
+          </div>
+
+          <!-- 파싱 결과 미리보기 -->
+          <div id="csv-preview" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:13px;font-weight:600;color:var(--text-primary)" id="csv-preview-title"></div>
+              <button onclick="resetCsvImport()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px">✕ 취소</button>
+            </div>
+            <div class="tw" style="margin-bottom:12px">
+              <table>
+                <thead><tr>
+                  <th><input type="checkbox" id="csv-chk-all" onchange="toggleAllCsvRows(this.checked)" style="accent-color:var(--accent)"></th>
+                  <th>날짜</th><th>체중</th><th>골격근</th><th>체지방</th><th>체지방률</th><th>BMR</th><th>상태</th>
+                </tr></thead>
+                <tbody id="csv-preview-tbody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-p" onclick="importCsvSelected()" id="csv-import-btn">선택 항목 가져오기</button>
+              <span style="font-size:12px;color:var(--text-muted)" id="csv-selected-count"></span>
+            </div>
+          </div>
+
+          <!-- 가져오기 안내 -->
+          <div id="csv-howto" style="margin-top:14px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:500">📱 인바디 앱 CSV 내보내기 방법</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div class="csv-step"><span class="csv-step-num">1</span>인바디 앱 실행 → 하단 <b>마이페이지</b> 탭</div>
+              <div class="csv-step"><span class="csv-step-num">2</span>우측 상단 설정(⚙) → <b>데이터 관리</b></div>
+              <div class="csv-step"><span class="csv-step-num">3</span><b>데이터 내보내기</b> → CSV 선택 → 공유/저장</div>
+              <div class="csv-step"><span class="csv-step-num">4</span>저장된 CSV 파일을 이 화면에 업로드</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card"><div class="sl">추이</div><div class="chart-wrap"><canvas id="ibChart"></canvas></div></div>
@@ -957,6 +970,22 @@ async function delInbody(date){if(!confirm(`${date} 삭제?`))return;await dbRem
 // ═══════════════════════════════════════════
 // CSV IMPORT — InBody App
 // ═══════════════════════════════════════════
+// ── CSV 패널 토글 ──
+let csvPanelOpen=false;
+function toggleCsvPanel(){
+  csvPanelOpen=!csvPanelOpen;
+  const panel=document.getElementById('csv-panel');
+  const icon=document.getElementById('csv-toggle-icon');
+  if(csvPanelOpen){
+    panel.style.maxHeight='800px';panel.style.opacity='1';panel.style.pointerEvents='auto';
+    if(icon)icon.textContent='✕';
+  }else{
+    panel.style.maxHeight='0';panel.style.opacity='0';panel.style.pointerEvents='none';
+    if(icon)icon.textContent='↑';
+    resetCsvImport();
+  }
+}
+
 let csvParsedRows = [];
 
 // 드래그 앤 드롭
