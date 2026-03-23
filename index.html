@@ -747,19 +747,48 @@ function renderStatCards(){
   const diff=(cur&&first&&cur.date!==first.date)?{weight:cur.weight-first.weight,muscle:cur.muscle-first.muscle}:null;
   const fatPct=cur?+(cur.fat/cur.weight*100).toFixed(1):null;
   const dd=dday();
-  // 예측 달성일 계산
+  // 예측 달성일 계산 — 체중 & 체지방 두 목표 중 늦은 쪽 기준
   let predText='-',predSub='현재 페이스 기준';
-  if(cur&&first&&first.date!==cur.date&&goals.weight){
-    const days=(new Date(cur.date)-new Date(first.date))/86400000;
-    const pace=(first.weight-cur.weight)/days; // kg/day
-    if(pace>0){
-      const remaining=cur.weight-goals.weight;
-      if(remaining>0){
-        const daysNeeded=Math.ceil(remaining/pace);
-        const predDate=new Date();predDate.setDate(predDate.getDate()+daysNeeded);
+  if(cur&&first&&first.date!==cur.date){
+    const days=Math.max(1,(new Date(cur.date)-new Date(first.date))/86400000);
+
+    // 체중 예측
+    let weightDays=null;
+    if(goals.weight&&cur.weight>goals.weight){
+      const pace=(first.weight-cur.weight)/days; // kg/day 감소량
+      if(pace>0) weightDays=Math.ceil((cur.weight-goals.weight)/pace);
+    } else if(goals.weight&&cur.weight<=goals.weight){
+      weightDays=0; // 이미 달성
+    }
+
+    // 체지방량 예측 (goals.fatKg 또는 goals.fatPct 기반)
+    let fatDays=null;
+    const curFatKg=cur.fat||null;
+    const firstFatKg=first.fat||null;
+    const goalFatKg=goals.fatKg||(goals.fatPct&&goals.weight?+(goals.weight*goals.fatPct/100).toFixed(1):null);
+    if(curFatKg&&firstFatKg&&goalFatKg&&curFatKg>goalFatKg){
+      const fatPace=(firstFatKg-curFatKg)/days; // kg/day 감소량
+      if(fatPace>0) fatDays=Math.ceil((curFatKg-goalFatKg)/fatPace);
+    } else if(curFatKg&&goalFatKg&&curFatKg<=goalFatKg){
+      fatDays=0;
+    }
+
+    // 두 목표 중 더 늦은 쪽이 실질 달성일
+    const validDays=[weightDays,fatDays].filter(v=>v!=null);
+    if(validDays.length>0){
+      const maxDays=Math.max(...validDays);
+      if(maxDays===0){
+        predText='달성!';predSub='체중 & 체지방 목표 달성';
+      } else {
+        const predDate=new Date();predDate.setDate(predDate.getDate()+maxDays);
         predText=`${predDate.getMonth()+1}/${predDate.getDate()}`;
-        predSub=goals.deadline?(daysNeeded<dd?'목표일보다 빠름 ↑':'목표일보다 느림 ↓'):'예측 달성일';
-      } else {predText='달성!';predSub='목표 체중 달성';}
+        // 병목 항목 표시
+        const bottleneck=
+          weightDays!=null&&fatDays!=null?(weightDays>=fatDays?'체중 기준':'체지방 기준'):
+          weightDays!=null?'체중 기준':'체지방 기준';
+        const vs=goals.deadline?(maxDays<dd?'목표일보다 빠름 ↑':'목표일보다 느림 ↓'):bottleneck;
+        predSub=vs;
+      }
     }
   }
   document.getElementById('stat-cards').innerHTML=[
