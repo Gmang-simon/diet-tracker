@@ -378,7 +378,10 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
           <div class="chart-wrap" style="height:240px"><canvas id="trendChart"></canvas></div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:var(--text-secondary)" id="trend-legend"></div>
         </div>
-        <div class="card"><div class="sl">신체 구성</div><div class="chart-wrap"><canvas id="compChart"></canvas></div></div>
+        <div class="card">
+          <div class="sl">누적 소모 달성률</div>
+          <div id="cum-achieve-gauge"></div>
+        </div>
       </div>
     </section>
 
@@ -738,7 +741,7 @@ function renderDashboard(){
   document.getElementById('header-dday').textContent=dd>=0?`D-${dd}`:`D+${Math.abs(dd)}`;
   renderWeeklyReport();
   renderQuickInput();
-  renderStatCards();renderProgressBars();renderInsights();renderDashTrend();renderCompChart();
+  renderStatCards();renderProgressBars();renderInsights();renderDashTrend();renderCumAchieve();
 }
 function dday(){const dl=goals.deadline;if(!dl)return 0;return Math.ceil((new Date(dl)-new Date(today()))/86400000);}
 
@@ -968,11 +971,80 @@ function renderDashTrend(){
   ).join('');
 }
 
-function renderCompChart(){
-  const cur=latestIb();if(!cur)return;
-  const fp=+(cur.fat/cur.weight*100).toFixed(1),mp=+(cur.muscle/cur.weight*100).toFixed(1),op=+(100-fp-mp).toFixed(1);
-  if(cC)cC.destroy();
-  cC=new Chart(document.getElementById('compChart'),{type:'doughnut',data:{labels:[`체지방 ${fp}%`,`골격근 ${mp}%`,`기타 ${op}%`],datasets:[{data:[fp,mp,op],backgroundColor:['#f87171','#4ade80','#60a5fa'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8a8884',font:{size:11},boxWidth:8,padding:10},position:'bottom'}},cutout:'60%'}});
+function renderCumAchieve(){
+  const el=document.getElementById('cum-achieve-gauge');
+  if(!el)return;
+
+  const cur=latestIb();
+  const first=firstIb();
+  const dArr=dietArr();
+
+  // 총 필요 소모 칼로리 = 감량 목표 kg × 7700
+  const totalNeeded=cur&&goals.weight?Math.max(0,+(cur.weight-goals.weight).toFixed(1))*7700:null;
+
+  // 누적 실제 소모 = 각 식단 기록일의 (BMR + 운동소모 - 섭취)를 합산
+  let cumBurn=0;
+  dArr.forEach(d=>{
+    const r=calcDailyTarget(d.date);
+    const bmr=r?r.bmr:(cur?.bmr||1500);
+    const exKcal=r?r.exKcal:0;
+    cumBurn+=Math.max(0,bmr+exKcal-d.kcal);
+  });
+  cumBurn=Math.round(cumBurn);
+
+  const pct=totalNeeded?Math.min(100,+(cumBurn/totalNeeded*100).toFixed(1)):null;
+
+  // 예상 달성 기간 (현재 페이스 기준)
+  let paceText='';
+  if(first&&cur&&first.date!==cur.date&&goals.weight&&cur.weight>goals.weight){
+    const days=Math.max(1,(new Date(cur.date)-new Date(first.date))/86400000);
+    const pace=(first.weight-cur.weight)/days;
+    if(pace>0){
+      const daysLeft=Math.ceil((cur.weight-goals.weight)/pace);
+      paceText=`현재 페이스로 약 ${daysLeft}일 후 달성 예측`;
+    }
+  }
+
+  if(!totalNeeded){
+    el.innerHTML='<div style="font-size:12px;color:var(--text-muted);padding:12px 0">설정에서 목표 체중을 입력하면 달성률이 표시됩니다</div>';
+    return;
+  }
+
+  // 색상: 33% 미만=빨강, 33~66%=주황, 66% 이상=초록
+  const gaugeColor=pct<33?'#f87171':pct<66?'#fb923c':'#4ade80';
+  const circumference=2*Math.PI*54; // r=54
+  const dashOffset=circumference*(1-pct/100);
+
+  el.innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 4px">
+      <div style="position:relative;width:140px;height:140px">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="54" fill="none" stroke="var(--bg3)" stroke-width="12"/>
+          <circle cx="70" cy="70" r="54" fill="none"
+            stroke="${gaugeColor}" stroke-width="12"
+            stroke-dasharray="${circumference.toFixed(1)}"
+            stroke-dashoffset="${dashOffset.toFixed(1)}"
+            stroke-linecap="round"
+            transform="rotate(-90 70 70)"
+            style="transition:stroke-dashoffset 1s ease"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+          <div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:${gaugeColor};line-height:1">${pct!=null?pct.toFixed(1):'-'}</div>
+          <div style="font-size:12px;color:var(--text-muted)">%</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:14px">
+        <div style="background:var(--bg3);border-radius:8px;padding:10px 12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">누적 소모</div>
+          <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)">${cumBurn.toLocaleString()}<span style="font-size:10px;font-weight:400;color:var(--text-secondary);margin-left:2px">kcal</span></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px 12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">목표 소모</div>
+          <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text-primary)">${Math.round(totalNeeded).toLocaleString()}<span style="font-size:10px;font-weight:400;color:var(--text-secondary);margin-left:2px">kcal</span></div>
+        </div>
+      </div>
+      ${paceText?`<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:center">${paceText}</div>`:''}
+    </div>`;
 }
 
 // ═══════════════════════════════════════════
