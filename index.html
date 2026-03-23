@@ -1844,17 +1844,27 @@ async function confirmWithdraw(){
   if(!pw){errEl.textContent='비밀번호를 입력해주세요';return;}
   btn.textContent='처리 중...';btn.disabled=true;
   try{
-    const {auth,deleteUser,reauthenticateWithCredential,EmailAuthProvider,remove,ref,db}=FB;
+    const {auth,deleteUser,reauthenticateWithCredential,EmailAuthProvider}=FB;
     const user=auth.currentUser;
     if(!user)throw new Error('로그인 상태가 아닙니다');
-    // 재인증 (deleteUser는 최근 로그인이 필요)
+    // 재인증
     const credential=EmailAuthProvider.credential(user.email,pw);
     await reauthenticateWithCredential(user,credential);
     // 1. Firebase DB 전체 삭제
     await FB.remove(FB.ref(FB.db,`users/${uid}`));
     // 2. Auth 계정 삭제
     await deleteUser(user);
-    // 완료 — onAuthStateChanged가 자동으로 로그아웃 처리
+    // 3. 모달 닫고 직접 로그인 화면으로 전환 (onAuthStateChanged 대기 없이)
+    hideWithdrawModal();
+    uid=null;
+    stopListeners();
+    document.getElementById('app-screen').classList.remove('visible');
+    document.getElementById('auth-screen').style.display='flex';
+    // 저장된 아이디/세션 정보 초기화
+    localStorage.removeItem('diet_saved_email');
+    localStorage.removeItem('diet_stay_login');
+    localStorage.removeItem('diet_new_user');
+    toast('탈퇴가 완료되었습니다');
   }catch(e){
     const msgs={
       'auth/wrong-password':'비밀번호가 올바르지 않습니다',
