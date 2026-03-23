@@ -700,9 +700,12 @@ async function authSubmit(){
       await signInWithEmailAndPassword(auth,email,pw);
     }else{
       const name=document.getElementById('auth-name').value.trim()||email.split('@')[0];
+      // 신규 유저 플래그 — createUserWithEmailAndPassword 호출 전에 먼저 설정
+      // (onAuthStateChanged가 await 도중 먼저 발동되기 때문)
+      localStorage.setItem('diet_new_user','1');
+      await setPersistence(auth,browserLocalPersistence);
       const cred=await createUserWithEmailAndPassword(auth,email,pw);
       await updateProfile(cred.user,{displayName:name});
-      isNewUser=true; // 온보딩 트리거
     }
   }catch(e){
     const msgs={'auth/user-not-found':'등록된 이메일이 없습니다','auth/wrong-password':'비밀번호가 틀렸습니다','auth/email-already-in-use':'이미 사용 중인 이메일입니다','auth/weak-password':'비밀번호는 6자 이상이어야 합니다','auth/invalid-email':'이메일 형식이 올바르지 않습니다','auth/invalid-credential':'이메일 또는 비밀번호가 올바르지 않습니다'};
@@ -1975,8 +1978,11 @@ waitFB(fb=>{
       document.getElementById('app-screen').classList.add('visible');
       startListeners();
       if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-      // 신규 유저 온보딩 — 회원가입 직후이거나 목표 미설정 상태
-      if(isNewUser){isNewUser=false;setTimeout(()=>startOnboarding(),600);}
+      // 신규 유저 온보딩 — localStorage 플래그로 판단 (타이밍 이슈 방지)
+      if(localStorage.getItem('diet_new_user')==='1'){
+        localStorage.removeItem('diet_new_user');
+        setTimeout(()=>startOnboarding(),800);
+      }
     }else{
       uid=null;stopListeners();
       document.getElementById('app-screen').classList.remove('visible');
