@@ -15,7 +15,7 @@
 <!-- ★ Firebase — 아래 config를 본인 것으로 교체하세요 ★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, get, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -41,7 +41,8 @@ const db   = getDatabase(app);
 // ── 전역으로 노출 ──
 window._fb = { auth, db, ref, set, get, onValue, push, remove, update,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile,
-  setPersistence, browserLocalPersistence, browserSessionPersistence };
+  setPersistence, browserLocalPersistence, browserSessionPersistence,
+  deleteUser, reauthenticateWithCredential, EmailAuthProvider };
 window._fbReady = true;
 document.dispatchEvent(new Event('fb-ready'));
 </script>
@@ -606,10 +607,39 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
         <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">로그인 중: <span id="account-email" style="color:var(--text-primary)"></span></div>
         <button class="btn btn-g" onclick="confirmLogout()">로그아웃</button>
       </div>
+      <div class="card" style="border-color:rgba(248,113,113,.2);background:rgba(248,113,113,.04)">
+        <div class="sl" style="color:var(--danger)">위험 구역</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;line-height:1.7">
+          회원 탈퇴 시 <b style="color:var(--text-primary)">모든 기록(인바디·식단·운동·목표)</b>과 계정이 즉시 삭제되며 <b style="color:var(--danger)">복구가 불가능</b>합니다.
+        </div>
+        <button class="btn" style="background:var(--danger-dim);color:var(--danger);border:1px solid rgba(248,113,113,.3);font-size:13px" onclick="showWithdrawModal()">회원 탈퇴</button>
+      </div>
     </section>
 
   </main>
 </div><!-- /app-screen -->
+
+<!-- ── WITHDRAW MODAL ── -->
+<div id="withdraw-modal" style="display:none;position:fixed;inset:0;background:rgba(8,9,9,.88);backdrop-filter:blur(10px);z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:400px;background:var(--bg1);border:1px solid rgba(248,113,113,.35);border-radius:var(--r-lg);overflow:hidden">
+    <div style="padding:22px 24px 0">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);margin-bottom:8px">회원 탈퇴</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:10px">정말 탈퇴하시겠어요?</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:18px">
+        탈퇴하면 <b style="color:var(--text-primary)">모든 기록과 계정이 즉시 삭제</b>되며 되돌릴 수 없어요.<br>
+        계속하려면 비밀번호를 입력해주세요.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px">
+        <input type="password" id="withdraw-pw" class="fi" placeholder="현재 비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')confirmWithdraw()">
+        <div id="withdraw-err" style="font-size:12px;color:var(--danger);min-height:16px"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;padding:16px 24px;background:var(--bg2);border-top:1px solid var(--border)">
+      <button class="btn btn-g" style="flex:1" onclick="hideWithdrawModal()">취소</button>
+      <button class="btn" style="flex:1;background:var(--danger);color:#fff;border:none;font-weight:700" onclick="confirmWithdraw()" id="withdraw-btn">탈퇴 확인</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── ONBOARDING ── -->
 <div id="onboarding" class="hidden">
@@ -1791,6 +1821,49 @@ function updateIbFatPct(){
     val.textContent=(f/w*100).toFixed(1)+'%';
   } else {
     display.style.display='none';
+  }
+}
+
+// ═══════════════════════════════════════════
+// 회원 탈퇴
+// ═══════════════════════════════════════════
+function showWithdrawModal(){
+  document.getElementById('withdraw-pw').value='';
+  document.getElementById('withdraw-err').textContent='';
+  document.getElementById('withdraw-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('withdraw-pw').focus(),100);
+}
+function hideWithdrawModal(){
+  document.getElementById('withdraw-modal').style.display='none';
+}
+async function confirmWithdraw(){
+  const pw=document.getElementById('withdraw-pw').value;
+  const errEl=document.getElementById('withdraw-err');
+  const btn=document.getElementById('withdraw-btn');
+  errEl.textContent='';
+  if(!pw){errEl.textContent='비밀번호를 입력해주세요';return;}
+  btn.textContent='처리 중...';btn.disabled=true;
+  try{
+    const {auth,deleteUser,reauthenticateWithCredential,EmailAuthProvider,remove,ref,db}=FB;
+    const user=auth.currentUser;
+    if(!user)throw new Error('로그인 상태가 아닙니다');
+    // 재인증 (deleteUser는 최근 로그인이 필요)
+    const credential=EmailAuthProvider.credential(user.email,pw);
+    await reauthenticateWithCredential(user,credential);
+    // 1. Firebase DB 전체 삭제
+    await FB.remove(FB.ref(FB.db,`users/${uid}`));
+    // 2. Auth 계정 삭제
+    await deleteUser(user);
+    // 완료 — onAuthStateChanged가 자동으로 로그아웃 처리
+  }catch(e){
+    const msgs={
+      'auth/wrong-password':'비밀번호가 올바르지 않습니다',
+      'auth/invalid-credential':'비밀번호가 올바르지 않습니다',
+      'auth/too-many-requests':'잠시 후 다시 시도해주세요',
+      'auth/requires-recent-login':'다시 로그인 후 시도해주세요',
+    };
+    errEl.textContent=msgs[e.code]||e.message;
+    btn.textContent='탈퇴 확인';btn.disabled=false;
   }
 }
 
