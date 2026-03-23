@@ -202,7 +202,7 @@ td.dc{font-family:'Pretendard',sans-serif;color:var(--text-secondary);font-size:
 .wr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .wr-title{font-size:12px;font-weight:600;color:var(--accent);}
 .wr-period{font-size:11px;color:var(--text-muted);}
-.wr-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.wr-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 .wr-item{background:var(--bg3);border-radius:var(--r-sm);padding:10px 12px;}
 .wr-label{font-size:10px;color:var(--text-muted);font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
 .wr-value{font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text-primary);line-height:1;}
@@ -1522,63 +1522,63 @@ function renderMonthStats(){
 }
 
 // ═══════════════════════════════════════════
-// 주간 리포트
+// 진행 현황 (시작일 ~ 오늘)
 // ═══════════════════════════════════════════
 function renderWeeklyReport(){
   const td=today();
-  const weekAgo=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  const prevWeekStart=new Date(Date.now()-14*86400000).toISOString().slice(0,10);
+  const first=firstIb(),cur=latestIb();
+  if(!first){document.getElementById('weekly-report').innerHTML='';return;}
 
-  const recentIb=ibArr().filter(r=>r.date>weekAgo);
-  const recentDiet=dietArr().filter(r=>r.date>weekAgo);
-  if(!recentIb.length&&!recentDiet.length){
-    document.getElementById('weekly-report').innerHTML='';return;
-  }
+  // 경과 일수
+  const elapsedDays=Math.max(0,Math.round((new Date(td)-new Date(first.date))/86400000));
 
-  // 체중 변화
-  const ibThisWeek=ibArr().filter(r=>r.date>weekAgo);
-  const wStart=ibThisWeek.length?ibThisWeek[0].weight:null;
-  const wEnd=ibThisWeek.length?ibThisWeek[ibThisWeek.length-1].weight:null;
-  const wChange=wStart&&wEnd?+(wEnd-wStart).toFixed(1):null;
+  // 체중 감량
+  const wChange=cur&&first&&cur.date!==first.date?+(cur.weight-first.weight).toFixed(1):null;
 
-  // 운동 달성률
-  const exDays=Object.keys(exercise).filter(d=>d>weekAgo&&d<=td);
-  const exDone7=exDays.filter(d=>exDone(exercise[d]));
-  const exRate=exDays.length?Math.round(exDone7.length/exDays.length*100):null;
+  // 체지방 감량
+  const fChange=cur?.fat&&first?.fat?+(cur.fat-first.fat).toFixed(1):null;
 
-  // 평균 칼로리 소모
-  const deficits=recentDiet.map(d=>{
-    const r=calcDailyTarget(d.date);
-    if(!r)return null;
-    return r.bmr+r.exKcal-d.kcal;
-  }).filter(v=>v!=null);
-  const avgDeficit=deficits.length?Math.round(deficits.reduce((s,v)=>s+v,0)/deficits.length):null;
+  // 전체 기간 운동 달성률
+  const exAll=Object.keys(exercise).filter(d=>d>=first.date&&d<=td);
+  const exDoneAll=exAll.filter(d=>exDone(exercise[d]));
+  const exRate=exAll.length?Math.round(exDoneAll.length/exAll.length*100):null;
 
-  // 이번 주 날짜 범위
-  const from=new Date(weekAgo);from.setDate(from.getDate()+1);
-  const periodText=`${from.getMonth()+1}/${from.getDate()} — ${new Date(td).getMonth()+1}/${new Date(td).getDate()}`;
+  // 날짜 범위 텍스트
+  const startFmt=`${+first.date.slice(5,7)}/${+first.date.slice(8,10)}`;
+  const todayFmt=`${+td.slice(5,7)}/${+td.slice(8,10)}`;
 
   document.getElementById('weekly-report').innerHTML=`
     <div class="weekly-report">
       <div class="wr-header">
-        <div class="wr-title">주간 리포트</div>
-        <div class="wr-period">${periodText}</div>
+        <div class="wr-title">진행 현황</div>
+        <div class="wr-period">${startFmt} 시작 — 오늘 ${todayFmt}</div>
       </div>
       <div class="wr-grid">
         <div class="wr-item">
-          <div class="wr-label">체중 변화</div>
-          <div class="wr-value" style="color:${wChange!=null?(wChange<0?'var(--accent)':'var(--danger)'):'var(--text-primary)'}">${wChange!=null?(wChange>0?'+':'')+wChange:'—'}<span>kg</span></div>
-          <div class="wr-sub">7일간</div>
+          <div class="wr-label">경과</div>
+          <div class="wr-value">${elapsedDays}<span>일째</span></div>
+          <div class="wr-sub">${startFmt} 시작</div>
+        </div>
+        <div class="wr-item">
+          <div class="wr-label">체중 감량</div>
+          <div class="wr-value" style="color:${wChange!=null?(wChange<0?'var(--accent)':'var(--danger)'):'var(--text-primary)'}">
+            ${wChange!=null?(wChange>0?'+':'')+wChange:'—'}<span>kg</span>
+          </div>
+          <div class="wr-sub">${first?fmt(first.weight):'-'} → ${cur?fmt(cur.weight):'-'}</div>
+        </div>
+        <div class="wr-item">
+          <div class="wr-label">체지방 감량</div>
+          <div class="wr-value" style="color:${fChange!=null?(fChange<0?'var(--accent)':'var(--danger)'):'var(--text-primary)'}">
+            ${fChange!=null?(fChange>0?'+':'')+fChange:'—'}<span>kg</span>
+          </div>
+          <div class="wr-sub">${first?.fat?fmt(first.fat):'-'} → ${cur?.fat?fmt(cur.fat):'-'}</div>
         </div>
         <div class="wr-item">
           <div class="wr-label">운동 달성률</div>
-          <div class="wr-value" style="color:${exRate!=null?(exRate>=60?'var(--accent)':'var(--warn)'):'var(--text-primary)'}">${exRate!=null?exRate:'—'}<span>${exRate!=null?'%':''}</span></div>
-          <div class="wr-sub">${exDone7.length}/${exDays.length}일</div>
-        </div>
-        <div class="wr-item">
-          <div class="wr-label">평균 일별 소모</div>
-          <div class="wr-value" style="color:${avgDeficit!=null?(avgDeficit>0?'var(--accent)':'var(--danger)'):'var(--text-primary)'}">${avgDeficit!=null?avgDeficit:'—'}<span>${avgDeficit!=null?'kcal':''}</span></div>
-          <div class="wr-sub">${recentDiet.length}일 기록</div>
+          <div class="wr-value" style="color:${exRate!=null?(exRate>=43?'var(--accent)':'var(--warn)'):'var(--text-primary)'}">
+            ${exRate!=null?exRate:'—'}<span>${exRate!=null?'%':''}</span>
+          </div>
+          <div class="wr-sub">${exDoneAll.length}/${exAll.length}일 완료</div>
         </div>
       </div>
     </div>`;
