@@ -17,7 +17,7 @@ const firebaseConfig = {
   projectId:"diet-62c46",storageBucket:"diet-62c46.firebasestorage.app",
   messagingSenderId:"37243712733",appId:"1:37243712733:web:ac396d70583bfa878c5734",measurementId:"G-E3MCR4L1KB"
 };
-const app=initializeApp(firebaseConfig);const auth=getAuth(app);const db=getDatabase(app);
+const app=initializeApp(firebaseConfig,'diet-admin');const auth=getAuth(app);const db=getDatabase(app);
 window._adm={auth,db,ref,onValue,get,set,remove,signInWithEmailAndPassword,signOut,onAuthStateChanged,setPersistence,browserLocalPersistence,browserSessionPersistence};
 window._admReady=true;document.dispatchEvent(new Event('adm-ready'));
 </script>
@@ -292,7 +292,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:11px;}
 // ★ 관리자 이메일 목록 — 여기에 추가하세요
 // ★ Admin email list — add allowed emails here
 const ADMIN_EMAILS = [
-  "criowvt@gmail.com"
+  // "admin@example.com",
 ];
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -372,7 +372,7 @@ const fmtD=d=>d?d.slice(5).replace('-','/'):'';
 const ago7=()=>new Date(Date.now()-7*86400000).toISOString().slice(0,10);
 const exDone=v=>v==='O'||(v&&typeof v==='object'&&v.done===true);
 const exObj=v=>(typeof v==='object'&&v)?v:(v==='O'?{done:true}:{done:false});
-const getName=(uid,d)=>d?.goals?.name||uid.slice(0,8)+'…';
+const getName=(uid,d)=>d?.goals?.name||d?.profile?.name||uid.slice(0,8)+'…';
 const getLatestIb=d=>{if(!d?.inbody)return null;const ks=Object.keys(d.inbody).sort((a,b)=>b.localeCompare(a));return ks.length?{...d.inbody[ks[0]],date:ks[0]}:null;};
 const getFirstIb=d=>{if(!d?.inbody)return null;const ks=Object.keys(d.inbody).sort();return ks.length?{...d.inbody[ks[0]],date:ks[0]}:null;};
 const getLastDate=d=>{const ds=[];if(d?.inbody)ds.push(...Object.keys(d.inbody));if(d?.diet)ds.push(...Object.keys(d.diet));if(d?.exercise)ds.push(...Object.keys(d.exercise));return ds.sort().pop()||null;};

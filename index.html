@@ -1978,6 +1978,13 @@ waitFB(fb=>{
       document.getElementById('app-screen').classList.add('visible');
       startListeners();
       if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+      // 로그인할 때마다 profile 기록 → 어드민에서 데이터 없는 신규 유저도 조회 가능
+      const{db,ref,set}=FB;
+      set(ref(db,`users/${uid}/profile`),{
+        name:userName,
+        email:user.email,
+        lastLogin:new Date().toISOString().slice(0,10)
+      }).catch(()=>{});
       // 신규 유저 온보딩 — localStorage 플래그로 판단 (타이밍 이슈 방지)
       if(localStorage.getItem('diet_new_user')==='1'){
         localStorage.removeItem('diet_new_user');
